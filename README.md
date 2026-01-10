@@ -1,62 +1,54 @@
-# MSpread: Malware Spreading Simulation and Visualization Tool
+# MSpreadEngine: Malware Spreading Simulation Engine
 
 ## Overview
 
-MSpread is a comprehensive framework for modeling and visualizing malware propagation across networks—ranging from small corporate environments to country-wide infrastructures. Built with Python and NetworkX, MSpread provides a powerful simulation engine and REST API for analyzing malware spread patterns.
+**MSpreadEngine** is the core simulation engine component of the **MSpread** platform. It provides a powerful framework for modeling and simulating malware propagation across networks—ranging from small corporate environments to country-wide infrastructures. Built with Python and NetworkX, MSpreadEngine enables realistic malware spread analysis through a flexible simulation engine and REST API.
+
+### MSpread vs MSpreadEngine
+
+- **MSpread**: The overall solution that includes visualization, analytics, and reporting tools (future)
+- **MSpreadEngine**: The core engine (this folder) focused on malware simulation and API services
 
 ## Features
 
 - **Multiple Malware Types**: Simulate worms, viruses, ransomware, and trojans with distinct behaviors
 - **Network Topology Models**: Support for scale-free, small-world, random, and custom network topologies
 - **Flexible Simulation Engine**: Time-step based simulation with customizable infection rates and spreading patterns
-- **REST API**: FastAPI-based API for running simulations programmatically
-- **Data Export**: JSON export of network topology and simulation results
+- **REST API**: FastAPI-based API for running simulations programmatically via HTTP
 - **Extensible Architecture**: Easy to add new malware types and network models
+- **Performance Optimized**: Multi-threaded network generation for large-scale simulations (30k+ nodes)
 
 ## Project Structure
 
 ```
-malware_simulation_poc/
+MSpreadEngine/
 │
-├── network_model/           # Graph-based network representation
+├── network_model/              # Graph-based network representation
 │   ├── __init__.py
-│   ├── network_graph.py     # NetworkX-based network model
-│   └── ...
+│   └── network_graph.py        # NetworkX-based network model (optimized for large graphs)
 │
-├── malware_engine/          # Malware spread logic
+├── malware_engine/             # Malware spread logic
 │   ├── __init__.py
-│   ├── malware_base.py      # Base classes for malware types
-│   ├── worm.py              # Worm-specific behavior
-│   ├── virus.py             # Virus-specific behavior
-│   ├── ransomware.py        # Ransomware-specific behavior
-│   └── ...
+│   └── malware_base.py         # Base classes for malware types (Worm, Virus, Ransomware)
 │
-├── simulation/              # Core simulation loop
+├── simulation/                 # Core simulation loop
 │   ├── __init__.py
-│   ├── simulator.py         # Main simulation engine
-│   └── ...
+│   └── simulator.py            # Main simulation engine with time-step execution
 │
-├── api/                     # API layer (FastAPI)
+├── api/                        # API layer (FastAPI)
 │   ├── __init__.py
-│   └── api.py              # API endpoints
+│   └── api.py                  # REST API endpoints for running simulations
 │
-├── data/                    # Input/output data
-│   ├── input/
-│   │   ├── network_topology.json
-│   │   └── malware_params.json
-│   └── output/
-│       ├── simulation_results.json
-│       └── ...
-│
-├── tests/                   # Unit/integration tests
+├── tests/                      # Unit/integration tests
 │   ├── test_network_model.py
 │   ├── test_malware_engine.py
 │   └── ...
 │
+├── main.py                     # Application entry point (CLI)
+├── test_api_demo.py           # Comprehensive API test suite
 ├── __init__.py
-├── main.py                 # Application entry point
-├── README.md               # This file
-└── requriementes.txt   
+├── requirements.txt            # Python dependencies
+└── README.md                   # This file
 ```
 
 ## Installation
@@ -64,10 +56,11 @@ malware_simulation_poc/
 ### Requirements
 
 - Python 3.8+
-- networkx
-- fastapi
-- uvicorn
-- pydantic
+- networkx >= 2.6
+- fastapi >= 0.95.0
+- uvicorn >= 0.21.0
+- pydantic >= 1.10.0
+- tqdm >= 4.60.0 (for progress bars)
 
 ### Setup
 
@@ -77,24 +70,9 @@ malware_simulation_poc/
    pip install -r requirements.txt
    ```
 
-3. Initialize the application:
-   ```bash
-   python main.py init
-   ```
-
 ## Usage
 
-### Initialize Configuration Files
-
-```bash
-python main.py init
-```
-
-This creates sample configuration files in `data/input/`:
-- `network_topology.json`: Network configuration
-- `malware_params.json`: Malware parameters
-
-### Run API Server
+### Start API Server
 
 ```bash
 python main.py run
@@ -102,28 +80,64 @@ python main.py run
 
 The API will be available at `http://127.0.0.1:8000`
 
-**API Documentation**: 
+**Interactive API Documentation**: 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
+
+**Custom Host/Port:**
+```bash
+python main.py run --host 0.0.0.0              # Listen on all interfaces
+python main.py run --port 8080                 # Custom port
+python main.py run --reload                    # Enable auto-reload for development
+```
 
 ### Run Demonstration Simulation
 
 ```bash
+# Run with defaults (30k nodes, worm, 0.35 infection rate)
 python main.py demo
+
+# Custom parameters
+python main.py demo --nodes 100                # Smaller network
+python main.py demo --nodes 500 --type virus   # Different malware type
+python main.py demo --topology small_world     # Different topology
+python main.py demo --rate 0.5                 # Higher infection rate
+python main.py demo --steps 100                # More simulation steps
+
+# Full example with all parameters
+python main.py demo --nodes 200 --topology scale_free --type ransomware --rate 0.3 --steps 50
 ```
 
-This runs a sample simulation showing malware propagation across a 30-node scale-free network.
+### Test the API
+
+Use the comprehensive test suite to verify API functionality:
+
+```bash
+# Terminal 1: Start the API server
+python main.py run
+
+# Terminal 2: Run the test suite
+python test_api_demo.py
+```
+
+The test suite (`test_api_demo.py`) includes:
+- ✅ Server health checks
+- ✅ All malware type simulations (worm, virus, ransomware)
+- ✅ Different network topologies comparison
+- ✅ Infection rate impact analysis
+- ✅ Multiple initial infection scenarios
+- ✅ Color-coded test results with detailed output
 
 ### Programmatic Usage
 
 ```python
-from malware_simulation_poc.network_model import NetworkGraph
-from malware_simulation_poc.malware_engine.malware_base import Worm
-from malware_simulation_poc.simulation import Simulator
+from network_model import NetworkGraph
+from malware_engine.malware_base import Worm
+from simulation import Simulator
 
 # Create network
 network = NetworkGraph(network_type="scale_free")
-network.generate_topology(num_nodes=50)
+network.generate_topology(num_nodes=500, use_parallel=True, num_workers=8)
 
 # Create malware
 malware = Worm("worm_1", infection_rate=0.35)
@@ -136,6 +150,8 @@ results = simulator.run(max_steps=100)
 # Get statistics
 stats = simulator.get_statistics()
 print(f"Infected: {stats['total_infected']} / {stats['total_devices']}")
+print(f"Steps: {stats['total_steps']}")
+print(f"Percentage: {stats['infection_percentage']:.2f}%")
 ```
 
 ## API Endpoints
@@ -227,32 +243,32 @@ Fully connected network.
 NetworkGraph(network_type="complete")
 ```
 
-## Configuration Files
+## API Testing
 
-### network_topology.json
-```json
-{
-  "network_type": "scale_free",
-  "num_nodes": 50,
-  "topology_description": "Scale-free network topology"
-}
+### Comprehensive Test Suite
+
+The `test_api_demo.py` script provides comprehensive testing of all API endpoints:
+
+```bash
+# Terminal 1: Start the API server
+python main.py run
+
+# Terminal 2: Run the test suite (in a new terminal)
+python test_api_demo.py
 ```
 
-### malware_params.json
-```json
-{
-  "malware_profiles": [
-    {
-      "id": "worm_1",
-      "type": "worm",
-      "infection_rate": 0.4,
-      "latency": 1
-    }
-  ]
-}
-```
+**Test Coverage:**
+- Server health and connectivity
+- Root endpoint information
+- Malware simulations (Worm, Virus, Ransomware)
+- Network topology comparisons (scale-free, small-world, random)
+- Infection rate impact analysis (tests rates from 0.1 to 0.5)
+- Multiple initial infection scenarios
+- Performance metrics and execution times
 
-## Testing
+**Output:** Color-coded results with detailed statistics showing infection spread for each test case.
+
+## Unit Tests
 
 Run unit tests:
 

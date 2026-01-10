@@ -29,25 +29,41 @@ def main(
     port: int = 8000,
     reload: bool = False,
     mode: str = "api",
-    demo: bool = False
+    demo: bool = False,
+    num_nodes: int = 30000,
+    network_type: str = "scale_free",
+    malware_type: str = "worm",
+    infection_rate: float = 0.35,
+    max_steps: int = 50
 ):
     """
-    API entry point for MSpread application.
+    Entry point for MSpreadEngine application.
     
     Args:
-        host: IP (default: 127.0.0.1)
-        port: open port on the ip for the server (default: 8000)
+        host: Server IP (default: 127.0.0.1)
+        port: Server port (default: 8000)
         reload: Enable auto-reload for development (default: False)
         mode: Execution mode - 'api' or 'demo' (default: 'api')
         demo: Run a demonstration simulation (default: False)
+        num_nodes: Number of nodes in demo network (default: 30000)
+        network_type: Network topology for demo (default: scale_free)
+        malware_type: Malware type for demo (default: worm)
+        infection_rate: Infection rate for demo (default: 0.35)
+        max_steps: Maximum simulation steps for demo (default: 50)
     """
     logger.info("=" * 60)
-    logger.info("MSpread: Malware Spreading Simulation and Visualization Tool")
+    logger.info("MSpreadEngine: Malware Spreading Simulation Engine")
     logger.info("=" * 60)
     
     if demo or mode == "demo":
         logger.info("Running demonstration simulation...")
-        run_demo_simulation()
+        run_demo_simulation(
+            num_nodes=num_nodes,
+            network_type=network_type,
+            malware_type=malware_type,
+            infection_rate=infection_rate,
+            max_steps=max_steps
+        )
     else:
         logger.info(f"Starting FastAPI server on {host}:{port}")
         logger.info(f"API Documentation available at http://{host}:{port}/docs")
@@ -68,31 +84,53 @@ def main(
             logger.info("Server stopped by user")
 
 
-def run_demo_simulation():
+def run_demo_simulation(
+    num_nodes: int = 30000,
+    network_type: str = "scale_free",
+    malware_type: str = "worm",
+    infection_rate: float = 0.35,
+    max_steps: int = 50
+):
     """
     Run a demonstration simulation showing malware propagation.
     
-    This function creates a sample network, initializes malware,
-    and runs a simulation to show the spreading behavior.
+    Args:
+        num_nodes: Number of nodes in the network
+        network_type: Type of network topology (scale_free, small_world, random)
+        malware_type: Type of malware (worm, virus, ransomware)
+        infection_rate: Infection rate (0-1)
+        max_steps: Maximum simulation steps
     """
     logger.info("=" * 60)
     logger.info("DEMONSTRATION SIMULATION")
     logger.info("=" * 60)
+    logger.info(f"Parameters: {num_nodes} nodes, {network_type} topology, {malware_type}")
+    logger.info(f"Infection rate: {infection_rate}, Max steps: {max_steps}")
+    logger.info("-" * 60)
     
     try:
-        # Create a scale-free network
-        logger.info("[1/5] Creating network topology...")
-        network = NetworkGraph(network_type="scale_free")
-        network.generate_topology(num_nodes=30000, use_parallel=True, num_workers=8)
+        # Create network
+        logger.info(f"[1/5] Creating {network_type} network topology...")
+        network = NetworkGraph(network_type=network_type)
+        network.generate_topology(num_nodes=num_nodes, use_parallel=True, num_workers=8)
         
-        stats = network.get_statistics(skip_expensive=True)  # Skip expensive calculations for large networks
+        stats = network.get_statistics(skip_expensive=True)
         logger.info(f"    Network created with {stats['num_nodes']} nodes and {stats['num_edges']} edges")
         logger.info(f"    Density: {stats['density']:.4f}")
         
-        # Create worm malware
-        logger.info("[2/5] Initializing malware (Worm)...")
-        malware = Worm("worm_1", infection_rate=0.35, latency=1)
-        logger.info(f"    Malware created with infection rate: {malware.infection_rate}")
+        # Create malware
+        logger.info(f"[2/5] Initializing malware ({malware_type.capitalize()})...")
+        if malware_type.lower() == "worm":
+            malware = Worm("malware_1", infection_rate=infection_rate, latency=1)
+        elif malware_type.lower() == "virus":
+            malware = Virus("malware_1", infection_rate=infection_rate, latency=2)
+        elif malware_type.lower() == "ransomware":
+            malware = Ransomware("malware_1", infection_rate=infection_rate, latency=3)
+        else:
+            raise ValueError(f"Unknown malware type: {malware_type}")
+        
+        logger.info(f"    Malware type: {malware_type}")
+        logger.info(f"    Infection rate: {malware.infection_rate}")
         logger.info(f"    Behavior: {malware.get_behavior()}")
         
         # Initialize simulator
@@ -103,8 +141,8 @@ def run_demo_simulation():
         logger.info(f"    Initial infection: {initial_infected}")
         
         # Run simulation
-        logger.info("[4/5] Running simulation...")
-        simulator.run(max_steps=50)
+        logger.info(f"[4/5] Running simulation (max {max_steps} steps)...")
+        simulator.run(max_steps=max_steps)
         
         # Display results
         logger.info("[5/5] Simulation Results")
@@ -140,15 +178,17 @@ def run_demo_simulation():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="MSpread: Malware Spreading Simulation and Visualization Tool",
+        description="MSpreadEngine: Malware Spreading Simulation Engine",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python main.py run                       # Start API server
-  python main.py run --host 0.0.0.0       # Start API on all interfaces
-  python main.py run --port 8080           # Start API on custom port
-  python main.py demo                      # Run demonstration simulation
-  python main.py run --demo                # Alternative demo command
+  python main.py run                                    # Start API server
+  python main.py run --host 0.0.0.0                   # Start API on all interfaces
+  python main.py run --port 8080                       # Start API on custom port
+  python main.py demo                                  # Run demo with defaults (30k nodes, worm, 0.35 rate)
+  python main.py demo --nodes 100 --type virus        # Run demo with 100 nodes, virus malware
+  python main.py demo --nodes 500 --rate 0.5          # Run demo with higher infection rate
+  python main.py demo --topology small_world          # Run demo with small-world topology
         """
     )
     
@@ -158,11 +198,16 @@ Examples:
     run_parser = subparsers.add_parser("run", help="Start the API server")
     run_parser.add_argument("--host", default="127.0.0.1", help="Server host (default: 127.0.0.1)")
     run_parser.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
-    run_parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
-    run_parser.add_argument("--demo", action="store_true", help="Run demonstration simulation")
+    run_parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
+    run_parser.add_argument("--demo", action="store_true", help="Run demo instead of starting server")
     
     # Demo command
-    subparsers.add_parser("demo", help="Run a demonstration simulation")
+    demo_parser = subparsers.add_parser("demo", help="Run a demonstration simulation")
+    demo_parser.add_argument("--nodes", type=int, default=30000, help="Number of network nodes (default: 30000)")
+    demo_parser.add_argument("--topology", default="scale_free", help="Network topology: scale_free, small_world, random (default: scale_free)")
+    demo_parser.add_argument("--type", default="worm", help="Malware type: worm, virus, ransomware (default: worm)")
+    demo_parser.add_argument("--rate", type=float, default=0.35, help="Infection rate 0-1 (default: 0.35)")
+    demo_parser.add_argument("--steps", type=int, default=50, help="Maximum simulation steps (default: 50)")
     
     args = parser.parse_args()
     
@@ -175,6 +220,14 @@ Examples:
             demo=args.demo
         )
     elif args.command == "demo":
-        main(mode="demo", demo=True)
+        main(
+            mode="demo",
+            demo=True,
+            num_nodes=args.nodes,
+            network_type=args.topology,
+            malware_type=args.type,
+            infection_rate=args.rate,
+            max_steps=args.steps
+        )
     else:
         parser.print_help()
