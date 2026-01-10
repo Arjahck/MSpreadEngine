@@ -60,7 +60,7 @@ MSpreadEngine/
 - fastapi >= 0.95.0
 - uvicorn >= 0.21.0
 - pydantic >= 1.10.0
-- tqdm >= 4.60.0 (for progress bars)
+- tqdm >= 4.60.0
 
 ### Setup
 
@@ -82,7 +82,6 @@ The API will be available at `http://127.0.0.1:8000`
 
 **Interactive API Documentation**: 
 - Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
 
 **Custom Host/Port:**
 ```bash
@@ -243,31 +242,6 @@ Fully connected network.
 NetworkGraph(network_type="complete")
 ```
 
-## API Testing
-
-### Comprehensive Test Suite
-
-The `test_api_demo.py` script provides comprehensive testing of all API endpoints:
-
-```bash
-# Terminal 1: Start the API server
-python main.py run
-
-# Terminal 2: Run the test suite (in a new terminal)
-python test_api_demo.py
-```
-
-**Test Coverage:**
-- Server health and connectivity
-- Root endpoint information
-- Malware simulations (Worm, Virus, Ransomware)
-- Network topology comparisons (scale-free, small-world, random)
-- Infection rate impact analysis (tests rates from 0.1 to 0.5)
-- Multiple initial infection scenarios
-- Performance metrics and execution times
-
-**Output:** Color-coded results with detailed statistics showing infection spread for each test case.
-
 ## Unit Tests
 
 Run unit tests:
@@ -314,10 +288,6 @@ python -m pytest tests/test_network_model.py
 ## License
 
 MIT License
-
-## Contact
-
-For questions or contributions, please contact the development team.
 
 ## References
 

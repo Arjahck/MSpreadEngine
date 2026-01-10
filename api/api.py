@@ -40,8 +40,8 @@ def create_app() -> FastAPI:
         FastAPI application instance
     """
     app = FastAPI(
-        title="MSpread API",
-        description="Malware Spreading Simulation and Visualization Tool",
+        title="MSpreadEngine API",
+        description="Malware Spreading Simulation Engine",
         version="0.1.0",
     )
 
@@ -49,8 +49,8 @@ def create_app() -> FastAPI:
     def read_root() -> Dict:
         """Root endpoint."""
         return {
-            "name": "MSpread",
-            "description": "Malware Spreading Simulation and Visualization Tool",
+            "name": "MSpreadEngine",
+            "description": "Malware Spreading Simulation Engine",
             "version": "0.1.0",
         }
 
