@@ -7,7 +7,6 @@ import os
 import sys
 from pathlib import Path
 
-# Add parent directory to path to allow imports from inside the package
 sys.path.insert(0, str(Path(__file__).parent))
 
 from api import create_app
@@ -36,9 +35,7 @@ def main(
     infection_rate: float = 0.35,
     max_steps: int = 50
 ):
-    """
-    Entry point for MSpreadEngine application.
-    
+    """  
     Args:
         host: Server IP (default: 127.0.0.1)
         port: Server port (default: 8000)

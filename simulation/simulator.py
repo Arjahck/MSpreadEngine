@@ -15,12 +15,9 @@ except ImportError:
 
 
 class Simulator:
-    """Main simulation engine for malware spreading."""
 
     def __init__(self, network: NetworkGraph, malware: Malware):
         """
-        Initialize the simulator.
-
         Args:
             network: NetworkGraph instance
             malware: Malware instance
@@ -98,8 +95,6 @@ class Simulator:
 
     def get_statistics(self) -> Dict:
         """
-        Get simulation statistics.
-
         Returns:
             Dictionary with simulation statistics
         """
@@ -116,7 +111,6 @@ class Simulator:
         }
 
     def reset(self) -> None:
-        """Reset the simulation state."""
         self.current_step = 0
         self.history = []
         self.infection_timeline = {}

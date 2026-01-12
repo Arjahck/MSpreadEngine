@@ -15,6 +15,8 @@
 - **Network Topology Models**: Support for scale-free, small-world, random, and custom network topologies
 - **Flexible Simulation Engine**: Time-step based simulation with customizable infection rates and spreading patterns
 - **REST API**: FastAPI-based API for running simulations programmatically via HTTP
+- **WebSocket Support**: Real-time simulation streaming with continuous step-by-step updates
+- **CORS Enabled**: Cross-origin requests allowed for frontend integration
 - **Extensible Architecture**: Easy to add new malware types and network models
 - **Performance Optimized**: Multi-threaded network generation for large-scale simulations (30k+ nodes)
 
@@ -125,6 +127,7 @@ The test suite (`test_api_demo.py`) includes:
 - ✅ Different network topologies comparison
 - ✅ Infection rate impact analysis
 - ✅ Multiple initial infection scenarios
+- ✅ WebSocket real-time streaming tests
 - ✅ Color-coded test results with detailed output
 
 ### Programmatic Usage
@@ -157,7 +160,7 @@ print(f"Percentage: {stats['infection_percentage']:.2f}%")
 
 ### POST `/api/v1/simulate`
 
-Run a malware simulation.
+Run a malware simulation (HTTP request - returns complete results).
 
 **Request Body**:
 ```json
@@ -186,6 +189,111 @@ Run a malware simulation.
   "malware_type": "worm",
   "history": [...]
 }
+```
+
+### WebSocket `/ws/simulate`
+
+Run a malware simulation with real-time streaming updates (WebSocket).
+
+**Connection URL**: `ws://localhost:8000/ws/simulate`
+
+**Client sends (initial configuration)**:
+```json
+{
+  "network_config": {
+    "num_nodes": 50,
+    "network_type": "scale_free"
+  },
+  "malware_config": {
+    "malware_type": "worm",
+    "infection_rate": 0.35,
+    "latency": 1
+  },
+  "initial_infected": ["device_0"],
+  "max_steps": 100
+}
+```
+
+**Server responses** (streaming):
+
+1. **Initialization Message**:
+```json
+{
+  "type": "initialized",
+  "total_devices": 50,
+  "initial_infected": 1
+}
+```
+
+2. **Step Updates** (one per simulation step):
+```json
+{
+  "type": "step",
+  "step": 1,
+  "newly_infected": 5,
+  "total_infected": 6,
+  "devices_infected": ["device_1", "device_2", ...]
+}
+```
+
+3. **Completion Message**:
+```json
+{
+  "type": "complete",
+  "statistics": {
+    "total_steps": 15,
+    "total_devices": 50,
+    "total_infected": 42,
+    "infection_percentage": 84.0,
+    "malware_type": "worm",
+    "history": [...]
+  }
+}
+```
+
+4. **Error Message** (if applicable):
+```json
+{
+  "type": "error",
+  "message": "Error description"
+}
+```
+
+**WebSocket Advantages**:
+- Real-time step-by-step progress updates
+- Ideal for live dashboards and visualization
+- Lower latency compared to polling HTTP requests
+- Enables animated network infection spreading display
+
+**Example Client Code** (Python):
+```python
+import asyncio
+import websockets
+import json
+
+async def run_simulation():
+    async with websockets.connect('ws://localhost:8000/ws/simulate') as ws:
+        # Send simulation config
+        config = {
+            "network_config": {"num_nodes": 100, "network_type": "scale_free"},
+            "malware_config": {"malware_type": "worm", "infection_rate": 0.35, "latency": 1},
+            "initial_infected": ["device_0"],
+            "max_steps": 100
+        }
+        await ws.send(json.dumps(config))
+        
+        # Receive updates
+        while True:
+            message = await ws.recv()
+            data = json.loads(message)
+            
+            if data["type"] == "step":
+                print(f"Step {data['step']}: {data['newly_infected']} newly infected")
+            elif data["type"] == "complete":
+                print(f"Done! Total infected: {data['statistics']['total_infected']}")
+                break
+
+asyncio.run(run_simulation())
 ```
 
 ### GET `/health`
@@ -278,12 +386,14 @@ python -m pytest tests/test_network_model.py
 
 ## Future Enhancements
 
-- [ ] Real-time visualization with Plotly/D3.js
+- [X] Websocket implementation
+- [ ] Improve amount of parameter for nodes and malwares
+- [ ] Countermeasure modeling (firewalls, patches, quarantine)
 - [ ] Multi-threaded simulation engine
 - [ ] Machine learning for infection pattern prediction
-- [ ] Integration with real network data
-- [ ] Countermeasure modeling (firewalls, patches, quarantine)
 - [ ] Advanced statistics and analytics
+- [ ] LLMVirus simulation (PoC - Virus)
+- [ ] Real-time visualization with Plotly/D3.js
 
 ## License
 

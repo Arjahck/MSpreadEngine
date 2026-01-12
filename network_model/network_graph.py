@@ -93,7 +93,7 @@ class NetworkGraph:
             node_list_iter = node_list
             
         if use_parallel and num_nodes > 1000:
-            # Batch node addition for better performance
+            # Multi-threaded for better performance
             batch_size = max(1000, num_nodes // num_workers)
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 futures = []
