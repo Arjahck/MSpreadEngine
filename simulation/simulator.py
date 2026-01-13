@@ -24,6 +24,10 @@ class Simulator:
         """
         self.network = network
         self.malware = malware
+        
+        # Pass network reference to malware so it can check device attributes
+        self.malware.network = network
+        
         self.current_step = 0
         self.history = []
         self.infection_timeline = {}

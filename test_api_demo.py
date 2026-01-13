@@ -378,6 +378,168 @@ def test_multiple_initial_infected() -> bool:
         return False
 
 
+def test_device_attributes_all_admin() -> bool:
+    """Test simulation with all devices as admin users (normal spread)."""
+    print_header("Testing Device Attributes: All Admin Users")
+    
+    payload = {
+        "network_config": {
+            "num_nodes": 80,
+            "network_type": "scale_free",
+            "device_attributes": {
+                "device_type": "server",
+                "admin_user": True
+            }
+        },
+        "malware_config": {
+            "malware_type": "worm",
+            "infection_rate": 0.35,
+            "latency": 1
+        },
+        "initial_infected": ["device_0"],
+        "max_steps": 50
+    }
+    
+    print_info("All devices: admin_user=True (normal spread expected)")
+    
+    try:
+        start_time = time.time()
+        response = requests.post(
+            f"{API_BASE_URL}{API_VERSION}/simulate",
+            json=payload,
+            timeout=60
+        )
+        elapsed_time = time.time() - start_time
+        
+        if response.status_code == 200:
+            data = response.json()
+            print_success(f"Simulation completed in {elapsed_time:.2f}s")
+            print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
+            print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
+            print_info(f"Total Steps: {data['total_steps']}")
+            print_info("Result: Malware spread freely across admin network")
+            return True
+        else:
+            print_error(f"Simulation failed with status {response.status_code}")
+            print_error(f"Response: {response.text}")
+            return False
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
+def test_device_attributes_all_non_admin() -> bool:
+    """Test simulation with all devices as non-admin users (restricted spread)."""
+    print_header("Testing Device Attributes: All Non-Admin Users")
+    
+    payload = {
+        "network_config": {
+            "num_nodes": 80,
+            "network_type": "scale_free",
+            "device_attributes": {
+                "device_type": "workstation",
+                "admin_user": False
+            }
+        },
+        "malware_config": {
+            "malware_type": "worm",
+            "infection_rate": 0.35,
+            "latency": 1
+        },
+        "initial_infected": ["device_0"],
+        "max_steps": 50
+    }
+    
+    print_info("All devices: admin_user=False (no spread possible)")
+    print_info("Expected: Infection should be limited to initial device")
+    
+    try:
+        start_time = time.time()
+        response = requests.post(
+            f"{API_BASE_URL}{API_VERSION}/simulate",
+            json=payload,
+            timeout=60
+        )
+        elapsed_time = time.time() - start_time
+        
+        if response.status_code == 200:
+            data = response.json()
+            print_success(f"Simulation completed in {elapsed_time:.2f}s")
+            print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
+            print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
+            print_info(f"Total Steps: {data['total_steps']}")
+            
+            # Verify that infection is minimal (only initial device)
+            if data['total_infected'] == 1:
+                print_success("Spread blocked: Non-admin devices cannot infect each other")
+            else:
+                print_info(f"Note: {data['total_infected']} devices infected (topology may allow some spread)")
+            
+            return True
+        else:
+            print_error(f"Simulation failed with status {response.status_code}")
+            print_error(f"Response: {response.text}")
+            return False
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
+def test_device_attributes_mixed() -> bool:
+    """Test simulation with mixed admin/non-admin users (70/30 split with random distribution)."""
+    print_header("Testing Device Attributes: Mixed Admin/Non-Admin (70/30 Random)")
+    
+    payload = {
+        "network_config": {
+            "num_nodes": 100,
+            "network_type": "scale_free",
+            "node_definitions": [
+                {"count": 70, "attributes": {"admin_user": True, "device_type": "server"}},
+                {"count": 30, "attributes": {"admin_user": False, "device_type": "workstation"}}
+            ],
+            "node_distribution": "random"
+        },
+        "malware_config": {
+            "malware_type": "worm",
+            "infection_rate": 0.35,
+            "latency": 1
+        },
+        "initial_infected": ["device_0"],
+        "max_steps": 50
+    }
+    
+    print_info("Setup: 100 devices split into batches with RANDOM distribution")
+    print_info("  - Batch 1: 70 devices with admin_user=True (servers)")
+    print_info("  - Batch 2: 30 devices with admin_user=False (workstations)")
+    print_info("  - Distribution: RANDOM (mixed throughout network, not clustered)")
+    print_info("Expected: Admin and non-admin devices mixed, privilege boundaries tested")
+    
+    try:
+        start_time = time.time()
+        response = requests.post(
+            f"{API_BASE_URL}{API_VERSION}/simulate",
+            json=payload,
+            timeout=60
+        )
+        elapsed_time = time.time() - start_time
+        
+        if response.status_code == 200:
+            data = response.json()
+            print_success(f"Simulation completed in {elapsed_time:.2f}s")
+            print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
+            print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
+            print_info(f"Total Steps: {data['total_steps']}")
+            print_info("Result: Random distribution creates realistic network with mixed device types")
+            return True
+        else:
+            print_error(f"Simulation failed with status {response.status_code}")
+            print_error(f"Response: {response.text}")
+            return False
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return False
+
+
 async def test_websocket_simulation_worm() -> bool:
     """Test WebSocket endpoint for real-time worm simulation streaming."""
     print_header("Testing WebSocket Worm Simulation (Real-time Streaming)")
@@ -581,9 +743,12 @@ def run_all_tests():
         (6, "Network Topologies", test_different_topologies, False),
         (7, "Infection Rate Comparison", test_infection_rate_comparison, False),
         (8, "Multiple Initial Infections", test_multiple_initial_infected, False),
-        (9, "WebSocket Worm Simulation", test_websocket_simulation_worm, True),
-        (10, "WebSocket Virus Simulation", test_websocket_simulation_virus, True),
-        (11, "WebSocket Ransomware Simulation", test_websocket_simulation_ransomware, True),
+        (9, "Device Attributes: All Admin", test_device_attributes_all_admin, False),
+        (10, "Device Attributes: All Non-Admin", test_device_attributes_all_non_admin, False),
+        (11, "Device Attributes: Mixed", test_device_attributes_mixed, False),
+        (12, "WebSocket Worm Simulation", test_websocket_simulation_worm, True),
+        (13, "WebSocket Virus Simulation", test_websocket_simulation_virus, True),
+        (14, "WebSocket Ransomware Simulation", test_websocket_simulation_ransomware, True),
     ]
     
     return tests

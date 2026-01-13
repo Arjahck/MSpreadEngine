@@ -23,20 +23,65 @@ except ImportError:
 
 class NetworkGraph:
 
+    # Default device attributes
+    DEFAULT_DEVICE_ATTRIBUTES = {
+        "os": None,
+        "patch_status": None,
+        "device_type": "workstation",
+        "firewall_enabled": None,
+        "antivirus": None,
+        "admin_user": True,  # Default: can spread malware
+    }
+
     def __init__(self, network_type: str = "scale_free"):
         self.graph = nx.Graph()
         self.network_type = network_type
         self.device_states = {}  # Track device infection states
 
-    def add_device(self, device_id: str, device_type: str = "workstation", **attributes) -> None:
+    def add_device(self, device_id: str, **attributes) -> None:
         """
+        Add a device node with optional attributes.
+
         Args:
             device_id: Unique identifier for the device
-            device_type: Type of device (workstation, server, router, etc.)
-            **attributes: Additional device attributes
+            **attributes: Device attributes (os, patch_status, device_type, firewall_enabled, antivirus, admin_user)
+                         Attributes not provided will be set to defaults
         """
-        self.graph.add_node(device_id, device_type=device_type, **attributes)
+        # Merge provided attributes with defaults
+        device_attrs = self.DEFAULT_DEVICE_ATTRIBUTES.copy()
+        device_attrs.update(attributes)
+        
+        self.graph.add_node(device_id, **device_attrs)
         self.device_states[device_id] = "healthy"
+
+    def set_device_attributes(self, device_id: str, **attributes) -> None:
+        """
+        Update attributes for an existing device.
+
+        Args:
+            device_id: Device identifier
+            **attributes: Attributes to update
+        """
+        if device_id not in self.graph.nodes():
+            raise ValueError(f"Device {device_id} not found in network")
+        
+        for key, value in attributes.items():
+            self.graph.nodes[device_id][key] = value
+
+    def get_device_attributes(self, device_id: str) -> Dict:
+        """
+        Get all attributes for a device.
+
+        Args:
+            device_id: Device identifier
+
+        Returns:
+            Dictionary of device attributes
+        """
+        if device_id not in self.graph.nodes():
+            raise ValueError(f"Device {device_id} not found in network")
+        
+        return dict(self.graph.nodes[device_id])
 
     def add_connection(self, device1: str, device2: str, connection_type: str = "network", **attributes) -> None:
         """
@@ -50,7 +95,7 @@ class NetworkGraph:
         """
         self.graph.add_edge(device1, device2, connection_type=connection_type, **attributes)
 
-    def generate_topology(self, num_nodes: int, use_parallel: bool = True, num_workers: int = 8, **kwargs) -> None:
+    def generate_topology(self, num_nodes: int, use_parallel: bool = True, num_workers: int = 8, device_attributes: Optional[Dict] = None, **kwargs) -> None:
         """
         Generate a network topology based on the specified type.
         
@@ -60,6 +105,8 @@ class NetworkGraph:
             num_nodes: Number of nodes in the network
             use_parallel: Use parallel processing for node creation (default: True)
             num_workers: Number of worker threads (default: 8, adjust based on CPU cores)
+            device_attributes: Dictionary of default device attributes to apply to all nodes
+                              (e.g., {"os": "Windows Server 2019", "patch_status": "patched", ...})
             **kwargs: Additional parameters for topology generation
         """
         import time
@@ -85,7 +132,13 @@ class NetworkGraph:
 
         # Optimized: Add all nodes at once using add_nodes_from for better performance
         logger.info("Adding nodes to graph...")
-        node_list = [(f"device_{node}", {"device_type": "workstation"}) for node in base_graph.nodes()]
+        
+        # Build node attributes: merge defaults with provided attributes
+        base_attrs = self.DEFAULT_DEVICE_ATTRIBUTES.copy()
+        if device_attributes:
+            base_attrs.update(device_attributes)
+        
+        node_list = [(f"device_{node}", base_attrs.copy()) for node in base_graph.nodes()]
         
         if HAS_TQDM:
             node_list_iter = tqdm(node_list, desc="Adding nodes", unit="nodes", disable=len(node_list) < 1000)

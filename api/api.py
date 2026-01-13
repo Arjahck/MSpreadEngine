@@ -7,30 +7,360 @@ malware simulations.
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 import json
+import random
+
+
+class NodeDefinition(BaseModel):
+    """Definition for a batch of nodes with specific attributes."""
+    count: int  # Number of nodes in this batch
+    attributes: Dict  # Attributes to apply to nodes in this batch
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "count": 70,
+                "attributes": {
+                    "admin_user": True,
+                    "device_type": "server",
+                    "firewall_enabled": True,
+                    "antivirus": True,
+                    "patch_status": "fully_patched"
+                }
+            }
+        }
 
 
 class NetworkConfig(BaseModel):
     """Configuration for network topology."""
-    num_nodes: int
-    network_type: str = "scale_free"
+    num_nodes: int = Field(..., description="Number of devices in the network", example=100)
+    network_type: str = Field("scale_free", description="Type of network topology: scale_free, small_world, random, complete", example="scale_free")
+    device_attributes: Optional[Dict] = Field(None, description="Attributes to apply to ALL nodes uniformly", example={"os": "Windows Server 2019", "firewall_enabled": True})
+    node_definitions: Optional[List[NodeDefinition]] = Field(None, description="Batch definitions for per-group device attributes (creates network segmentation)")
+    node_distribution: str = Field("sequential", description="Distribution mode: 'sequential' (clusters devices by type) or 'random' (mixes device types throughout network)", example="random")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "num_nodes": 100,
+                "network_type": "scale_free",
+                "device_attributes": {
+                    "os": "Windows 10"
+                },
+                "node_definitions": [
+                    {"count": 70, "attributes": {"admin_user": True, "device_type": "server"}},
+                    {"count": 30, "attributes": {"admin_user": False, "device_type": "workstation"}}
+                ],
+                "node_distribution": "random"
+            }
+        }
 
 
 class MalwareConfig(BaseModel):
     """Configuration for malware."""
-    malware_type: str
-    infection_rate: float = 0.3
-    latency: int = 1
+    malware_type: str = Field(..., description="Type of malware: worm, virus, ransomware", example="worm")
+    infection_rate: float = Field(0.3, description="Probability of infection spreading to each neighbor (0.0-1.0)", example=0.35, ge=0.0, le=1.0)
+    latency: int = Field(1, description="Number of steps before infection can spread", example=1, ge=0)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "malware_type": "worm",
+                "infection_rate": 0.35,
+                "latency": 1
+            }
+        }
 
 
 class SimulationRequest(BaseModel):
     """Request body for running a simulation."""
-    network_config: NetworkConfig
-    malware_config: MalwareConfig
-    initial_infected: List[str]
-    max_steps: int = 100
+    network_config: NetworkConfig = Field(..., description="Network topology configuration")
+    malware_config: MalwareConfig = Field(..., description="Malware behavior configuration")
+    initial_infected: List[str] = Field(..., description="List of initially infected device IDs", example=["device_0", "device_5"])
+    max_steps: int = Field(100, description="Maximum simulation steps to run", example=50, ge=1)
+    
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "summary": "Simple 70/30 Admin/Non-Admin Split",
+                    "description": "Basic simulation with devices split into admin and non-admin groups",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 100,
+                            "network_type": "scale_free",
+                            "node_definitions": [
+                                {"count": 70, "attributes": {"admin_user": True, "device_type": "server"}},
+                                {"count": 30, "attributes": {"admin_user": False, "device_type": "workstation"}}
+                            ],
+                            "node_distribution": "random"
+                        },
+                        "malware_config": {
+                            "malware_type": "worm",
+                            "infection_rate": 0.35,
+                            "latency": 1
+                        },
+                        "initial_infected": ["device_0"],
+                        "max_steps": 50
+                    }
+                },
+                {
+                    "summary": "Enterprise Three-Tier Network",
+                    "description": "Realistic enterprise network with servers, admin workstations, and guest devices",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 500,
+                            "network_type": "scale_free",
+                            "device_attributes": {
+                                "os": "Windows",
+                                "firewall_enabled": True
+                            },
+                            "node_definitions": [
+                                {
+                                    "count": 50,
+                                    "attributes": {
+                                        "device_type": "server",
+                                        "admin_user": True,
+                                        "antivirus": True,
+                                        "patch_status": "fully_patched",
+                                        "firewall_enabled": True
+                                    }
+                                },
+                                {
+                                    "count": 200,
+                                    "attributes": {
+                                        "device_type": "workstation",
+                                        "admin_user": True,
+                                        "antivirus": True,
+                                        "patch_status": "patched"
+                                    }
+                                },
+                                {
+                                    "count": 250,
+                                    "attributes": {
+                                        "device_type": "workstation",
+                                        "admin_user": False,
+                                        "antivirus": False,
+                                        "firewall_enabled": False,
+                                        "patch_status": "unpatched"
+                                    }
+                                }
+                            ],
+                            "node_distribution": "random"
+                        },
+                        "malware_config": {
+                            "malware_type": "worm",
+                            "infection_rate": 0.35,
+                            "latency": 1
+                        },
+                        "initial_infected": ["device_300"],
+                        "max_steps": 100
+                    }
+                },
+                {
+                    "summary": "Mixed Operating Systems",
+                    "description": "Network with Windows servers, Linux workstations, and mixed guest devices",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 150,
+                            "network_type": "scale_free",
+                            "device_attributes": {
+                                "firewall_enabled": True
+                            },
+                            "node_definitions": [
+                                {
+                                    "count": 50,
+                                    "attributes": {
+                                        "admin_user": True,
+                                        "os": "Windows Server 2022",
+                                        "device_type": "server",
+                                        "antivirus": True
+                                    }
+                                },
+                                {
+                                    "count": 50,
+                                    "attributes": {
+                                        "admin_user": True,
+                                        "os": "Linux Ubuntu 20.04",
+                                        "device_type": "workstation",
+                                        "antivirus": False
+                                    }
+                                },
+                                {
+                                    "count": 50,
+                                    "attributes": {
+                                        "admin_user": False,
+                                        "os": "Windows 10",
+                                        "device_type": "workstation",
+                                        "antivirus": False
+                                    }
+                                }
+                            ],
+                            "node_distribution": "random"
+                        },
+                        "malware_config": {
+                            "malware_type": "virus",
+                            "infection_rate": 0.25,
+                            "latency": 2
+                        },
+                        "initial_infected": ["device_0"],
+                        "max_steps": 50
+                    }
+                },
+                {
+                    "summary": "Progressive Security Hardening",
+                    "description": "Network showing impact of security layers: unprotected → antivirus → full protection",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 120,
+                            "network_type": "scale_free",
+                            "node_definitions": [
+                                {
+                                    "count": 40,
+                                    "attributes": {
+                                        "admin_user": False,
+                                        "firewall_enabled": False,
+                                        "antivirus": False,
+                                        "patch_status": "unpatched"
+                                    }
+                                },
+                                {
+                                    "count": 40,
+                                    "attributes": {
+                                        "admin_user": False,
+                                        "firewall_enabled": False,
+                                        "antivirus": True,
+                                        "patch_status": "patched"
+                                    }
+                                },
+                                {
+                                    "count": 40,
+                                    "attributes": {
+                                        "admin_user": True,
+                                        "firewall_enabled": True,
+                                        "antivirus": True,
+                                        "patch_status": "fully_patched"
+                                    }
+                                }
+                            ],
+                            "node_distribution": "random"
+                        },
+                        "malware_config": {
+                            "malware_type": "ransomware",
+                            "infection_rate": 0.30,
+                            "latency": 3
+                        },
+                        "initial_infected": ["device_10"],
+                        "max_steps": 50
+                    }
+                },
+                {
+                    "summary": "Sequential Distribution (Clustered)",
+                    "description": "Devices grouped sequentially (not mixed) - shows impact of clustering on spread patterns",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 100,
+                            "network_type": "scale_free",
+                            "node_definitions": [
+                                {"count": 70, "attributes": {"admin_user": True}},
+                                {"count": 30, "attributes": {"admin_user": False}}
+                            ],
+                            "node_distribution": "sequential"
+                        },
+                        "malware_config": {
+                            "malware_type": "worm",
+                            "infection_rate": 0.35,
+                            "latency": 1
+                        },
+                        "initial_infected": ["device_0"],
+                        "max_steps": 50
+                    }
+                },
+                {
+                    "summary": "Simple Homogeneous Network",
+                    "description": "All devices identical - baseline for comparison",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 50,
+                            "network_type": "scale_free",
+                            "device_attributes": {
+                                "admin_user": True,
+                                "device_type": "workstation",
+                                "os": "Windows 11"
+                            }
+                        },
+                        "malware_config": {
+                            "malware_type": "worm",
+                            "infection_rate": 0.35,
+                            "latency": 1
+                        },
+                        "initial_infected": ["device_0"],
+                        "max_steps": 50
+                    }
+                },
+                {
+                    "summary": "Multiple Initial Infections",
+                    "description": "Simulation starting with multiple infected devices",
+                    "value": {
+                        "network_config": {
+                            "num_nodes": 200,
+                            "network_type": "small_world"
+                        },
+                        "malware_config": {
+                            "malware_type": "virus",
+                            "infection_rate": 0.25,
+                            "latency": 2
+                        },
+                        "initial_infected": ["device_0", "device_50", "device_100", "device_150"],
+                        "max_steps": 75
+                    }
+                }
+            ]
+        }
+
+
+def _apply_node_definitions(network, node_definitions: List[NodeDefinition], distribution: str = "sequential") -> None:
+    """
+    Apply node definitions (batch logic) to assign attributes to groups of nodes.
+    
+    Args:
+        network: NetworkGraph instance
+        node_definitions: List of NodeDefinition objects specifying batches
+        distribution: "sequential" (default) or "random"
+            - "sequential": Devices assigned in order (device_0, device_1, ...)
+            - "random": Devices randomly shuffled (mixes device types throughout network)
+    
+    Example (sequential):
+        node_definitions = [
+            NodeDefinition(count=70, attributes={"admin_user": True}),
+            NodeDefinition(count=30, attributes={"admin_user": False}),
+        ]
+        Result: device_0-69 are admin, device_70-99 are non-admin
+    
+    Example (random):
+        Same definitions but devices shuffled throughout network
+        Result: Admin and non-admin devices mixed throughout
+    """
+    # Build list of (device_id, attributes) tuples
+    device_attr_pairs = []
+    node_id = 0
+    
+    for definition in node_definitions:
+        for _ in range(definition.count):
+            device_id = f"device_{node_id}"
+            device_attr_pairs.append((device_id, definition.attributes))
+            node_id += 1
+    
+    # Shuffle if random distribution requested
+    if distribution.lower() == "random":
+        random.shuffle(device_attr_pairs)
+    
+    # Apply attributes to devices
+    for device_id, attributes in device_attr_pairs:
+        if device_id in network.graph.nodes():
+            network.set_device_attributes(device_id, **attributes)
 
 
 def create_app() -> FastAPI:
@@ -42,8 +372,11 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(
         title="MSpreadEngine API",
-        description="Malware Spreading Simulation Engine",
+        description="Malware Spreading Simulation Engine - Simulate malware spread across network topologies",
         version="0.1.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
     )
 
     # Add CORS middleware to allow cross-origin requests
@@ -87,7 +420,18 @@ def create_app() -> FastAPI:
 
             # Create network
             network = NetworkGraph(network_type=request.network_config.network_type)
-            network.generate_topology(request.network_config.num_nodes)
+            network.generate_topology(
+                request.network_config.num_nodes,
+                device_attributes=request.network_config.device_attributes
+            )
+
+            # Apply node definitions (batch logic) if provided
+            if request.network_config.node_definitions:
+                _apply_node_definitions(
+                    network, 
+                    request.network_config.node_definitions,
+                    distribution=request.network_config.node_distribution
+                )
 
             # Create malware
             malware_type = request.malware_config.malware_type.lower()
@@ -122,11 +466,6 @@ def create_app() -> FastAPI:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    @app.get("/api/v1/network/stats")
-    def get_network_stats() -> Dict:
-        """Get network statistics."""
-        return {"status": "not implemented"}
-
     @app.websocket("/ws/simulate")
     async def websocket_simulate(websocket: WebSocket):
         """
@@ -151,7 +490,16 @@ def create_app() -> FastAPI:
 
             # Create network
             network = NetworkGraph(network_type=network_config.get("network_type", "scale_free"))
-            network.generate_topology(network_config.get("num_nodes", 100))
+            network.generate_topology(
+                network_config.get("num_nodes", 100),
+                device_attributes=network_config.get("device_attributes", None)
+            )
+
+            # Apply node definitions (batch logic) if provided
+            if network_config.get("node_definitions"):
+                node_defs = [NodeDefinition(**d) for d in network_config.get("node_definitions", [])]
+                distribution = network_config.get("node_distribution", "sequential")
+                _apply_node_definitions(network, node_defs, distribution=distribution)
 
             # Create malware
             malware_type = malware_config.get("malware_type", "worm").lower()

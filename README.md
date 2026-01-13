@@ -119,6 +119,10 @@ python main.py run
 
 # Terminal 2: Run the test suite
 python test_api_demo.py
+
+# Run specific tests
+python test_api_demo.py -t 3        # Run test 3 (Worm Simulation)
+python test_api_demo.py -t 9 10 11  # Run WebSocket tests (9, 10, 11)
 ```
 
 The test suite (`test_api_demo.py`) includes:
@@ -348,6 +352,118 @@ NetworkGraph(network_type="random")
 Fully connected network.
 ```python
 NetworkGraph(network_type="complete")
+```
+
+## Device Attributes
+
+Each device (node) in the network can have attributes that define its characteristics. These attributes are used to simulate realistic network conditions and device configurations.
+
+### Available Attributes
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `os` | string | `None` | Operating system (e.g., "Windows Server 2019", "Ubuntu 20.04", "macOS") |
+| `patch_status` | string | `None` | Patching level (e.g., "patched", "unpatched", "partially_patched") |
+| `device_type` | string | `"workstation"` | Type of device (e.g., "workstation", "server", "router", "IoT") |
+| `firewall_enabled` | boolean | `None` | Whether firewall is enabled on the device |
+| `antivirus` | boolean | `None` | Whether antivirus software is installed |
+| `admin_user` | boolean | `True` | Whether malware can spread FROM this device (affects lateral movement) |
+
+### Setting Device Attributes
+
+#### Via API (HTTP/WebSocket)
+
+**Example Request with Device Attributes**:
+```json
+{
+  "network_config": {
+    "num_nodes": 100,
+    "network_type": "scale_free",
+    "device_attributes": {
+      "os": "Windows Server 2019",
+      "patch_status": "patched",
+      "device_type": "server",
+      "firewall_enabled": true,
+      "antivirus": true,
+      "admin_user": true
+    }
+  },
+  "malware_config": {
+    "malware_type": "worm",
+    "infection_rate": 0.35,
+    "latency": 1
+  },
+  "initial_infected": ["device_0"],
+  "max_steps": 100
+}
+```
+
+#### Programmatically (Python)
+
+```python
+from network_model import NetworkGraph
+from malware_engine.malware_base import Worm
+from simulation import Simulator
+
+# Create network with device attributes
+network = NetworkGraph(network_type="scale_free")
+network.generate_topology(
+    num_nodes=100,
+    device_attributes={
+        "os": "Windows Server 2019",
+        "patch_status": "patched",
+        "device_type": "server",
+        "firewall_enabled": True,
+        "antivirus": True,
+        "admin_user": True
+    }
+)
+
+# Or add/update attributes for specific devices
+network.set_device_attributes("device_0", 
+    os="Windows 10",
+    patch_status="unpatched",
+    admin_user=False
+)
+
+# Get device attributes
+attrs = network.get_device_attributes("device_0")
+print(attrs)
+```
+
+### Default Behavior
+
+- When no `device_attributes` are provided, all nodes are created with default values
+- **Important**: By default, `admin_user=True` for all devices, allowing normal malware spread
+- Other attributes default to `None`, which means "not specified" (can be used for future logic)
+
+### Impact on Simulation
+
+- **`admin_user=False`**: Device **cannot spread** malware to neighboring devices with `admin_user=True` (lateral movement is blocked by privilege restrictions)
+- **`admin_user=True`**: Device can spread malware **normally to all neighbors** regardless of their admin status
+- **Practical Effect**: Non-admin (unprivileged) user accounts cannot propagate malware to admin-protected devices, simulating realistic operating system privilege boundaries
+- **Future Implementation**: Other attributes can be used to:
+  - Adjust infection rates based on antivirus presence
+  - Affect spread based on patch status
+  - Block spread based on firewall configuration
+  - Create device-specific vulnerabilities
+
+### Spread Logic Examples
+
+**Scenario 1: Non-Admin Device (admin_user=False)**
+```
+Device A (non-admin, infected) attempts to spread to neighbors:
+├── Device B (admin_user=True) → BLOCKED ✗
+├── Device C (admin_user=False) → Can spread ✓
+└── Device D (admin_user=False) → Can spread ✓
+```
+
+**Scenario 2: Admin Device (admin_user=True)**
+```
+Device A (admin, infected) spreads to all neighbors:
+├── Device B (admin_user=True) → Can spread ✓
+├── Device C (admin_user=False) → Can spread ✓
+└── Device D (admin_user=False) → Can spread ✓
 ```
 
 ## Unit Tests
