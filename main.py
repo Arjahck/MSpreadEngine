@@ -15,7 +15,6 @@ from malware_engine.malware_base import Malware, MalwareType
 from simulation import Simulator
 
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -106,7 +105,6 @@ def run_demo_simulation(
     logger.info("-" * 60)
     
     try:
-        # Create network
         logger.info(f"[1/5] Creating {network_type} network topology...")
         network = NetworkGraph(network_type=network_type)
         network.generate_topology(num_nodes=num_nodes, use_parallel=True, num_workers=8)
@@ -115,13 +113,7 @@ def run_demo_simulation(
         logger.info(f"    Network created with {stats['num_nodes']} nodes and {stats['num_edges']} edges")
         logger.info(f"    Density: {stats['density']:.4f}")
         
-        # Create malware
         logger.info(f"[2/5] Initializing malware ({malware_type.capitalize()})...")
-        
-        # Determine specific params based on legacy type (for demo purposes)
-        # Worm: latency 1
-        # Virus: latency 2, requires interaction
-        # Ransomware: latency 3
         
         latency = 1
         requires_interaction = False
@@ -144,18 +136,15 @@ def run_demo_simulation(
         logger.info(f"    Infection rate: {malware.infection_rate}")
         logger.info(f"    Behavior: {malware.get_behavior()}")
         
-        # Initialize simulator
         logger.info("[3/5] Setting up simulator...")
         simulator = Simulator(network, malware)
         initial_infected = ["device_0", "device_1"]
         simulator.initialize(initial_infected)
         logger.info(f"    Initial infection: {initial_infected}")
         
-        # Run simulation
         logger.info(f"[4/5] Running simulation (max {max_steps} steps)...")
         simulator.run(max_steps=max_steps)
         
-        # Display results
         logger.info("[5/5] Simulation Results")
         logger.info("-" * 60)
         
@@ -205,14 +194,12 @@ Examples:
     
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     
-    # Run command
     run_parser = subparsers.add_parser("run", help="Start the API server")
     run_parser.add_argument("--host", default="127.0.0.1", help="Server host (default: 127.0.0.1)")
     run_parser.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
     run_parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
     run_parser.add_argument("--demo", action="store_true", help="Run demo instead of starting server")
     
-    # Demo command
     demo_parser = subparsers.add_parser("demo", help="Run a demonstration simulation")
     demo_parser.add_argument("--nodes", type=int, default=30000, help="Number of network nodes (default: 30000)")
     demo_parser.add_argument("--topology", default="scale_free", help="Network topology: scale_free, small_world, random (default: scale_free)")
@@ -222,7 +209,6 @@ Examples:
     
     args = parser.parse_args()
     
-    # Handle commands
     if args.command == "run":
         main(
             host=args.host,

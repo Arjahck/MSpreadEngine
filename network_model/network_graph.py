@@ -39,15 +39,7 @@ class NetworkGraph:
         self.device_states = {}  # Track device infection states
 
     def add_device(self, device_id: str, **attributes) -> None:
-        """
-        Add a device node with optional attributes.
-
-        Args:
-            device_id: Unique identifier for the device
-            **attributes: Device attributes (os, patch_status, device_type, firewall_enabled, antivirus, admin_user)
-                         Attributes not provided will be set to defaults
-        """
-        # Merge provided attributes with defaults
+        """ Add a device node with optional attributes. """
         device_attrs = self.DEFAULT_DEVICE_ATTRIBUTES.copy()
         device_attrs.update(attributes)
         
@@ -55,13 +47,6 @@ class NetworkGraph:
         self.device_states[device_id] = "healthy"
 
     def set_device_attributes(self, device_id: str, **attributes) -> None:
-        """
-        Update attributes for an existing device.
-
-        Args:
-            device_id: Device identifier
-            **attributes: Attributes to update
-        """
         if device_id not in self.graph.nodes():
             raise ValueError(f"Device {device_id} not found in network")
         
@@ -69,15 +54,7 @@ class NetworkGraph:
             self.graph.nodes[device_id][key] = value
 
     def get_device_attributes(self, device_id: str) -> Dict:
-        """
-        Get all attributes for a device.
 
-        Args:
-            device_id: Device identifier
-
-        Returns:
-            Dictionary of device attributes
-        """
         if device_id not in self.graph.nodes():
             raise ValueError(f"Device {device_id} not found in network")
         
@@ -99,8 +76,6 @@ class NetworkGraph:
         """
         Generate a network topology based on the specified type.
         
-        Optimized for large networks with multi-threaded node/edge creation.
-
         Args:
             num_nodes: Number of nodes in the network
             use_parallel: Use parallel processing for node creation (default: True)
@@ -114,7 +89,6 @@ class NetworkGraph:
         
         logger.info(f"Generating {num_nodes}-node {self.network_type} topology...")
         
-        # Generate base graph
         if self.network_type == "scale_free":
             logger.info("Creating Barabasi-Albert scale-free graph...")
             base_graph = nx.barabasi_albert_graph(num_nodes, 3)
@@ -130,10 +104,8 @@ class NetworkGraph:
         else:
             raise ValueError(f"Unknown network type: {self.network_type}")
 
-        # Optimized: Add all nodes at once using add_nodes_from for better performance
         logger.info("Adding nodes to graph...")
         
-        # Build node attributes: merge defaults with provided attributes
         base_attrs = self.DEFAULT_DEVICE_ATTRIBUTES.copy()
         if device_attributes:
             base_attrs.update(device_attributes)
@@ -146,7 +118,6 @@ class NetworkGraph:
             node_list_iter = node_list
             
         if use_parallel and num_nodes > 1000:
-            # Multi-threaded for better performance
             batch_size = max(1000, num_nodes // num_workers)
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 futures = []
@@ -158,12 +129,10 @@ class NetworkGraph:
                 for future in as_completed(futures):
                     future.result()
         else:
-            # Single-threaded for smaller networks
             for node_id, attrs in node_list_iter:
                 self.graph.add_node(node_id, **attrs)
                 self.device_states[node_id] = "healthy"
 
-        # Optimized: Add edges efficiently
         logger.info("Adding edges to graph...")
         edge_list = [(f"device_{u}", f"device_{v}") for u, v in base_graph.edges()]
         
@@ -173,7 +142,6 @@ class NetworkGraph:
             edge_list_iter = edge_list
             
         if use_parallel and len(edge_list) > 10000:
-            # Multi-threaded for better performance
             batch_size = max(5000, len(edge_list) // num_workers)
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 futures = []
@@ -185,7 +153,6 @@ class NetworkGraph:
                 for future in as_completed(futures):
                     future.result()
         else:
-            # Single-threaded for smaller networks
             for device1, device2 in edge_list_iter:
                 self.graph.add_edge(device1, device2, connection_type="network")
 
@@ -234,30 +201,16 @@ class NetworkGraph:
         self.network_type = data.get("network_type", "unknown")
         self.graph.clear()
 
-        # Add nodes
         for node_data in data.get("nodes", []):
             node_id = node_data.pop("id")
             self.add_device(node_id, **node_data)
 
-        # Add edges
         for edge_data in data.get("edges", []):
             source = edge_data.pop("source")
             target = edge_data.pop("target")
             self.add_connection(source, target, **edge_data)
 
     def get_statistics(self, skip_expensive: bool = False) -> Dict:
-        """
-        Get network statistics.
-        
-        For very large networks, skip_expensive=True will avoid expensive calculations
-        like diameter and average clustering (which scale as O(n²) or worse).
-
-        Args:
-            skip_expensive: Skip expensive calculations (default: False)
-
-        Returns:
-            Dictionary with network statistics
-        """
         stats = {
             "num_nodes": self.graph.number_of_nodes(),
             "num_edges": self.graph.number_of_edges(),

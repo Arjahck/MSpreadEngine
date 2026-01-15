@@ -17,15 +17,9 @@ except ImportError:
 class Simulator:
 
     def __init__(self, network: NetworkGraph, malware: Malware):
-        """
-        Args:
-            network: NetworkGraph instance
-            malware: Malware instance
-        """
         self.network = network
         self.malware = malware
         
-        # Pass network reference to malware so it can check device attributes
         self.malware.network = network
         
         self.current_step = 0
@@ -33,27 +27,16 @@ class Simulator:
         self.infection_timeline = {}
 
     def initialize(self, initial_infected: List[str]) -> None:
-        """
-        Initialize the simulation with initially infected devices.
-
-        Args:
-            initial_infected: List of initially infected device IDs
-        """
+        """Initialize the simulation with initially infected devices."""
         for device_id in initial_infected:
             self.malware.mark_infected(device_id)
             self.infection_timeline[device_id] = 0
 
     def step(self) -> Dict:
-        """
-        Execute one simulation time step.
-
-        Returns:
-            Dictionary with step information (newly infected, total infected, etc.)
-        """
+        """Execute one simulation time step."""
         self.current_step += 1
         newly_infected = []
 
-        # Process each infected device
         for infected_device in list(self.malware.infected_devices):
             neighbors = self.network.get_neighbors(infected_device)
             newly_infected_neighbors = self.malware.spread(infected_device, neighbors)
@@ -75,33 +58,20 @@ class Simulator:
         return step_data
 
     def run(self, max_steps: int = 100, stop_condition: Optional[callable] = None) -> List[Dict]:
-        """
-        Run the simulation for a specified number of steps.
-
-        Args:
-            max_steps: Maximum number of simulation steps
-            stop_condition: Optional callable that returns True to stop simulation
-
-        Returns:
-            List of step data dictionaries
-        """
+        """Run the simulation for a specified number of steps."""
         for _ in range(max_steps):
             if stop_condition and stop_condition(self):
                 break
 
             step_data = self.step()
 
-            # Stop if no new infections
             if step_data["newly_infected"] == 0 and self.current_step > self.malware.latency:
                 break
 
         return self.history
 
     def get_statistics(self) -> Dict:
-        """
-        Returns:
-            Dictionary with simulation statistics
-        """
+        """Returns dictionary with simulation statistics."""
         total_devices = self.network.graph.number_of_nodes()
         infected_count = self.malware.get_infected_count()
 

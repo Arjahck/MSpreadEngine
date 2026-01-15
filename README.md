@@ -47,9 +47,10 @@ MSpreadEngine/
 │   └── ...
 │
 ├── Docs/                      # Additional documentation
-│   ├── ADMIN_USER_LOGIC.md
-│   ├── ARCHITECTURE_DIAGRAM.md
-│   └── ...
+│   ├── ADMIN_USER_LOGIC.md    # Privilege-based spread logic
+│   ├── NODE_DEFINITIONS.md    # Batch definition guide
+│   ├── DEVICE_ATTRIBUTES.md   # Supported device attributes
+│   └── WEBSOCKET_DOCUMENTATION.md # Real-time streaming API
 │
 ├── main.py                     # Application entry point (CLI)
 ├── test_api_demo.py            # Comprehensive API test suite

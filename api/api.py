@@ -14,7 +14,6 @@ import random
 
 
 class NodeDefinition(BaseModel):
-    """Definition for a batch of nodes with specific attributes."""
     count: int  # Number of nodes in this batch
     attributes: Dict  # Attributes to apply to nodes in this batch
     
@@ -34,7 +33,6 @@ class NodeDefinition(BaseModel):
 
 
 class NetworkConfig(BaseModel):
-    """Configuration for network topology."""
     num_nodes: int = Field(..., description="Number of devices in the network", example=100)
     network_type: str = Field("scale_free", description="Type of network topology: scale_free, small_world, random, complete", example="scale_free")
     device_attributes: Optional[Dict] = Field(None, description="Attributes to apply to ALL nodes uniformly", example={"os": "Windows Server 2019", "firewall_enabled": True})
@@ -59,7 +57,6 @@ class NetworkConfig(BaseModel):
 
 
 class MalwareConfig(BaseModel):
-    """Configuration for malware."""
     malware_type: str = Field(..., description="Type of malware: worm, virus, ransomware, custom", example="worm")
     infection_rate: float = Field(0.5, description="Probability of infection spreading to each neighbor (0.0-1.0)", example=0.5, ge=0.0, le=1.0)
     latency: int = Field(1, description="Number of steps before infection can spread", example=1, ge=0)
@@ -338,19 +335,7 @@ def _apply_node_definitions(network, node_definitions: List[NodeDefinition], dis
         distribution: "sequential" (default) or "random"
             - "sequential": Devices assigned in order (device_0, device_1, ...)
             - "random": Devices randomly shuffled (mixes device types throughout network)
-    
-    Example (sequential):
-        node_definitions = [
-            NodeDefinition(count=70, attributes={"admin_user": True}),
-            NodeDefinition(count=30, attributes={"admin_user": False}),
-        ]
-        Result: device_0-69 are admin, device_70-99 are non-admin
-    
-    Example (random):
-        Same definitions but devices shuffled throughout network
-        Result: Admin and non-admin devices mixed throughout
     """
-    # Build list of (device_id, attributes) tuples
     device_attr_pairs = []
     node_id = 0
     
@@ -360,11 +345,9 @@ def _apply_node_definitions(network, node_definitions: List[NodeDefinition], dis
             device_attr_pairs.append((device_id, definition.attributes))
             node_id += 1
     
-    # Shuffle if random distribution requested
     if distribution.lower() == "random":
         random.shuffle(device_attr_pairs)
     
-    # Apply attributes to devices
     for device_id, attributes in device_attr_pairs:
         if device_id in network.graph.nodes():
             network.set_device_attributes(device_id, **attributes)
@@ -425,14 +408,12 @@ def create_app() -> FastAPI:
             from malware_engine.malware_base import Malware
             from simulation import Simulator
 
-            # Create network
             network = NetworkGraph(network_type=request.network_config.network_type)
             network.generate_topology(
                 request.network_config.num_nodes,
                 device_attributes=request.network_config.device_attributes
             )
 
-            # Apply node definitions (batch logic) if provided
             if request.network_config.node_definitions:
                 _apply_node_definitions(
                     network, 
@@ -440,7 +421,6 @@ def create_app() -> FastAPI:
                     distribution=request.network_config.node_distribution
                 )
 
-            # Create malware
             malware = Malware(
                 malware_id="malware_1",
                 malware_type=request.malware_config.malware_type,
@@ -453,7 +433,6 @@ def create_app() -> FastAPI:
                 requires_interaction=request.malware_config.requires_interaction
             )
 
-            # Run simulation
             simulator = Simulator(network, malware)
             simulator.initialize(request.initial_infected)
             simulator.run(max_steps=request.max_steps)
@@ -472,33 +451,28 @@ def create_app() -> FastAPI:
         """
         await websocket.accept()
         try:
-            # Receive simulation configuration from client
             data = await websocket.receive_json()
             
             from network_model import NetworkGraph
             from malware_engine.malware_base import Malware
             from simulation import Simulator
 
-            # Parse configuration
             network_config = data.get("network_config", {})
             malware_config = data.get("malware_config", {})
             initial_infected = data.get("initial_infected", [])
             max_steps = data.get("max_steps", 100)
 
-            # Create network
             network = NetworkGraph(network_type=network_config.get("network_type", "scale_free"))
             network.generate_topology(
                 network_config.get("num_nodes", 100),
                 device_attributes=network_config.get("device_attributes", None)
             )
 
-            # Apply node definitions (batch logic) if provided
             if network_config.get("node_definitions"):
                 node_defs = [NodeDefinition(**d) for d in network_config.get("node_definitions", [])]
                 distribution = network_config.get("node_distribution", "sequential")
                 _apply_node_definitions(network, node_defs, distribution=distribution)
 
-            # Create malware
             malware = Malware(
                 malware_id="malware_1",
                 malware_type=malware_config.get("malware_type", "custom"),
@@ -511,22 +485,18 @@ def create_app() -> FastAPI:
                 requires_interaction=malware_config.get("requires_interaction", False)
             )
 
-            # Initialize simulator
             simulator = Simulator(network, malware)
             simulator.initialize(initial_infected)
 
-            # Send initial state
             await websocket.send_json({
                 "type": "initialized",
                 "total_devices": network.graph.number_of_nodes(),
                 "initial_infected": len(initial_infected),
             })
 
-            # Run simulation and stream updates
             for step_num in range(max_steps):
                 step_data = simulator.step()
 
-                # Send step update to client
                 await websocket.send_json({
                     "type": "step",
                     "step": step_data["step"],
@@ -535,12 +505,10 @@ def create_app() -> FastAPI:
                     "devices_infected": step_data["devices_infected"],
                 })
 
-                # Stop if no new infections after latency period
                 if (step_data["newly_infected"] == 0 and 
                     simulator.current_step > malware.latency):
                     break
 
-            # Send final statistics
             stats = simulator.get_statistics()
             await websocket.send_json({
                 "type": "complete",
