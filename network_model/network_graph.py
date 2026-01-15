@@ -30,7 +30,7 @@ class NetworkGraph:
         "device_type": "workstation",
         "firewall_enabled": None,
         "antivirus": None,
-        "admin_user": True,  # Default: can spread malware
+        "admin_user": True, 
     }
 
     def __init__(self, network_type: str = "scale_free"):

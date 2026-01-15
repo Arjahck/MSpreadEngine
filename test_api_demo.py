@@ -91,8 +91,8 @@ def test_root_endpoint() -> bool:
         return False
 
 
-def test_simulation_worm(num_nodes: int = 50) -> bool:
-    print_header(f"Testing Worm Simulation ({num_nodes} nodes)")
+def test_simulation_simple(num_nodes: int = 50) -> bool:
+    print_header(f"Testing Simple Simulation ({num_nodes} nodes)")
     
     payload = {
         "network_config": {
@@ -100,16 +100,13 @@ def test_simulation_worm(num_nodes: int = 50) -> bool:
             "network_type": "scale_free"
         },
         "malware_config": {
-            "malware_type": "worm",
-            "infection_rate": 0.35,
-            "latency": 1
+            "malware_type": "custom"
         },
         "initial_infected": ["device_0"],
         "max_steps": 50
     }
     
-    print_info(f"Sending simulation request...")
-    print_info(f"Payload: {json.dumps(payload, indent=2)}")
+    print_info(f"Sending simple simulation request...")
     
     try:
         start_time = time.time()
@@ -122,49 +119,48 @@ def test_simulation_worm(num_nodes: int = 50) -> bool:
         
         if response.status_code == 200:
             data = response.json()
-            print_success(f"Worm simulation completed in {elapsed_time:.2f}s")
-            print_info(f"Total Devices: {data['total_devices']}")
-            print_info(f"Total Infected: {data['total_infected']}")
+            print_success(f"Simple simulation completed in {elapsed_time:.2f}s")
+            print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
             print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
-            print_info(f"Total Steps: {data['total_steps']}")
-            print_info(f"Malware Type: {data['malware_type']}")
-            
-            # Show first 5 steps
-            print_info("First 5 infection steps:")
-            for step in data['history'][:5]:
-                print(f"    Step {step['step']}: {step['newly_infected']} new → {step['total_infected']} total infected")
-            
             return True
         else:
             print_error(f"Simulation failed with status code {response.status_code}")
             print_error(f"Response: {response.text}")
             return False
-    except requests.exceptions.Timeout:
-        print_error("Request timed out (60 seconds)")
-        return False
     except Exception as e:
         print_error(f"Error: {str(e)}")
         return False
 
 
-def test_simulation_virus(num_nodes: int = 50) -> bool:
-    print_header(f"Testing Virus Simulation ({num_nodes} nodes)")
+def test_simulation_complex(num_nodes: int = 50) -> bool:
+    print_header(f"Testing Complex Simulation ({num_nodes} nodes)")
     
     payload = {
         "network_config": {
             "num_nodes": num_nodes,
-            "network_type": "scale_free"
+            "network_type": "scale_free",
+            "device_attributes": {
+                "os": "Windows",
+                "device_type": "server"
+            },
+            "node_definitions": [
+                {"count": 10, "attributes": {"os": "Linux", "device_type": "server"}}
+            ],
+            "node_distribution": "random"
         },
         "malware_config": {
-            "malware_type": "virus",
-            "infection_rate": 0.25,
-            "latency": 2
+            "malware_type": "custom",
+            "infection_rate": 0.8,
+            "latency": 2,
+            "spread_pattern": "bfs",
+            "target_os": ["Windows"],
+            "avoids_admin": False
         },
         "initial_infected": ["device_0"],
         "max_steps": 50
     }
     
-    print_info(f"Sending simulation request...")
+    print_info(f"Sending complex simulation request...")
     
     try:
         start_time = time.time()
@@ -177,63 +173,14 @@ def test_simulation_virus(num_nodes: int = 50) -> bool:
         
         if response.status_code == 200:
             data = response.json()
-            print_success(f"Virus simulation completed in {elapsed_time:.2f}s")
+            print_success(f"Complex simulation completed in {elapsed_time:.2f}s")
             print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
             print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
-            print_info(f"Total Steps: {data['total_steps']}")
+            print_info("Note: Linux nodes should be excluded from infection")
             return True
         else:
             print_error(f"Simulation failed with status code {response.status_code}")
             return False
-    except requests.exceptions.Timeout:
-        print_error("Request timed out (60 seconds)")
-        return False
-    except Exception as e:
-        print_error(f"Error: {str(e)}")
-        return False
-
-
-def test_simulation_ransomware(num_nodes: int = 50) -> bool:
-    print_header(f"Testing Ransomware Simulation ({num_nodes} nodes)")
-    
-    payload = {
-        "network_config": {
-            "num_nodes": num_nodes,
-            "network_type": "scale_free"
-        },
-        "malware_config": {
-            "malware_type": "ransomware",
-            "infection_rate": 0.30,
-            "latency": 3
-        },
-        "initial_infected": ["device_0"],
-        "max_steps": 50
-    }
-    
-    print_info(f"Sending simulation request...")
-    
-    try:
-        start_time = time.time()
-        response = requests.post(
-            f"{API_BASE_URL}{API_VERSION}/simulate",
-            json=payload,
-            timeout=60
-        )
-        elapsed_time = time.time() - start_time
-        
-        if response.status_code == 200:
-            data = response.json()
-            print_success(f"Ransomware simulation completed in {elapsed_time:.2f}s")
-            print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
-            print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
-            print_info(f"Total Steps: {data['total_steps']}")
-            return True
-        else:
-            print_error(f"Simulation failed with status code {response.status_code}")
-            return False
-    except requests.exceptions.Timeout:
-        print_error("Request timed out (60 seconds)")
-        return False
     except Exception as e:
         print_error(f"Error: {str(e)}")
         return False
@@ -540,9 +487,9 @@ def test_device_attributes_mixed() -> bool:
         return False
 
 
-async def test_websocket_simulation_worm() -> bool:
-    """Test WebSocket endpoint for real-time worm simulation streaming."""
-    print_header("Testing WebSocket Worm Simulation (Real-time Streaming)")
+async def test_websocket_simulation_simple() -> bool:
+    """Test WebSocket endpoint for simple simulation."""
+    print_header("Testing WebSocket Simple Simulation")
     
     websocket_url = "ws://localhost:8000/ws/simulate"
     
@@ -552,9 +499,7 @@ async def test_websocket_simulation_worm() -> bool:
             "network_type": "scale_free"
         },
         "malware_config": {
-            "malware_type": "worm",
-            "infection_rate": 0.35,
-            "latency": 1
+            "malware_type": "custom"
         },
         "initial_infected": ["device_0"],
         "max_steps": 50
@@ -565,44 +510,23 @@ async def test_websocket_simulation_worm() -> bool:
     try:
         async with websockets.connect(websocket_url) as websocket:
             print_success("Connected to WebSocket")
-            
-            # Send simulation configuration
-            print_info("Sending simulation configuration...")
             await websocket.send(json.dumps(payload))
             
             step_count = 0
-            total_infected = 0
-            messages = []
-            
-            # Receive messages from server
             while True:
                 try:
                     message = await websocket.recv()
                     data = json.loads(message)
-                    messages.append(data)
                     
-                    if data["type"] == "initialized":
-                        print_success(f"Simulation initialized: {data['total_devices']} devices, {data['initial_infected']} initially infected")
-                    
-                    elif data["type"] == "step":
-                        step_count += 1
-                        total_infected = data["total_infected"]
-                        if step_count <= 5:  # Show first 5 steps in detail
-                            print_info(f"Step {data['step']}: {data['newly_infected']} newly infected → {total_infected} total")
-                    
-                    elif data["type"] == "complete":
+                    if data["type"] == "complete":
                         stats = data["statistics"]
                         print_success(f"Simulation completed via WebSocket")
                         print_info(f"Total Steps: {step_count}")
-                        print_info(f"Total Infected: {stats['total_infected']}/{stats['total_devices']}")
-                        print_info(f"Infection Percentage: {stats['infection_percentage']:.2f}%")
-                        print_info(f"Malware Type: {stats['malware_type']}")
-                        
-                        # Show summary
-                        if step_count > 5:
-                            print_info(f"... ({step_count - 5} more steps) ...")
-                        
+                        print_info(f"Total Infected: {stats['total_infected']}")
                         return True
+                    
+                    elif data["type"] == "step":
+                        step_count += 1
                     
                     elif data["type"] == "error":
                         print_error(f"Server error: {data['message']}")
@@ -612,18 +536,14 @@ async def test_websocket_simulation_worm() -> bool:
                     print_error("WebSocket connection timeout")
                     return False
     
-    except ConnectionRefusedError:
-        print_error("Cannot connect to WebSocket. Make sure API server is running:")
-        print(f"  {Colors.OKBLUE}python main.py run{Colors.ENDC}")
-        return False
     except Exception as e:
         print_error(f"WebSocket error: {str(e)}")
         return False
 
 
-async def test_websocket_simulation_virus() -> bool:
-    """Test WebSocket endpoint for virus simulation."""
-    print_header("Testing WebSocket Virus Simulation")
+async def test_websocket_simulation_complex() -> bool:
+    """Test WebSocket endpoint for complex simulation."""
+    print_header("Testing WebSocket Complex Simulation")
     
     websocket_url = "ws://localhost:8000/ws/simulate"
     
@@ -633,122 +553,117 @@ async def test_websocket_simulation_virus() -> bool:
             "network_type": "scale_free"
         },
         "malware_config": {
-            "malware_type": "virus",
-            "infection_rate": 0.25,
-            "latency": 2
+            "malware_type": "custom",
+            "infection_rate": 0.8,
+            "spread_pattern": "bfs",
+            "latency": 0
         },
         "initial_infected": ["device_0"],
         "max_steps": 50
     }
     
-    print_info(f"Testing Virus via WebSocket...")
+    print_info(f"Connecting to WebSocket at {websocket_url}")
     
     try:
         async with websockets.connect(websocket_url) as websocket:
+            print_success("Connected to WebSocket")
             await websocket.send(json.dumps(payload))
             
             step_count = 0
-            final_infected = 0
-            
             while True:
-                message = await websocket.recv()
-                data = json.loads(message)
-                
-                if data["type"] == "step":
-                    step_count += 1
-                    final_infected = data["total_infected"]
-                
-                elif data["type"] == "complete":
-                    stats = data["statistics"]
-                    print_success(f"Virus simulation completed: {final_infected}/{stats['total_devices']} infected in {step_count} steps")
-                    return True
-                
-                elif data["type"] == "error":
-                    print_error(f"Error: {data['message']}")
+                try:
+                    message = await websocket.recv()
+                    data = json.loads(message)
+                    
+                    if data["type"] == "complete":
+                        stats = data["statistics"]
+                        print_success(f"Complex simulation completed via WebSocket")
+                        print_info(f"Total Steps: {step_count}")
+                        print_info(f"Total Infected: {stats['total_infected']}")
+                        return True
+                    
+                    elif data["type"] == "step":
+                        step_count += 1
+                    
+                    elif data["type"] == "error":
+                        print_error(f"Server error: {data['message']}")
+                        return False
+                        
+                except asyncio.TimeoutError:
                     return False
-    
+                    
     except Exception as e:
         print_error(f"WebSocket error: {str(e)}")
         return False
 
 
-async def test_websocket_simulation_ransomware() -> bool:
-    """Test WebSocket endpoint for ransomware simulation."""
-    print_header("Testing WebSocket Ransomware Simulation")
-    
-    websocket_url = "ws://localhost:8000/ws/simulate"
-    
+def test_default_malware() -> bool:
+    print_header("Testing Default Malware Config")
     payload = {
-        "network_config": {
-            "num_nodes": 50,
-            "network_type": "scale_free"
-        },
+        "network_config": {"num_nodes": 50, "network_type": "scale_free"},
+        "malware_config": {"malware_type": "custom"},
+        "initial_infected": ["device_0"],
+        "max_steps": 20
+    }
+    try:
+        response = requests.post(f"{API_BASE_URL}{API_VERSION}/simulate", json=payload, timeout=10)
+        if response.status_code == 200:
+            print_success("Default malware simulation successful")
+            return True
+        else:
+            print_error(f"Failed: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print_error(f"Error: {e}")
+        return False
+
+
+def test_configured_malware() -> bool:
+    print_header("Testing Fully Configured Malware")
+    payload = {
+        "network_config": {"num_nodes": 50, "network_type": "scale_free"},
         "malware_config": {
-            "malware_type": "ransomware",
-            "infection_rate": 0.30,
-            "latency": 3
+            "malware_type": "custom",
+            "infection_rate": 0.8,
+            "latency": 0,
+            "spread_pattern": "bfs",
+            "avoids_admin": False
         },
         "initial_infected": ["device_0"],
-        "max_steps": 50
+        "max_steps": 20
     }
-    
-    print_info(f"Testing Ransomware via WebSocket...")
-    
     try:
-        async with websockets.connect(websocket_url) as websocket:
-            await websocket.send(json.dumps(payload))
-            
-            step_count = 0
-            final_infected = 0
-            
-            while True:
-                message = await websocket.recv()
-                data = json.loads(message)
-                
-                if data["type"] == "step":
-                    step_count += 1
-                    final_infected = data["total_infected"]
-                
-                elif data["type"] == "complete":
-                    stats = data["statistics"]
-                    print_success(f"Ransomware simulation completed: {final_infected}/{stats['total_devices']} infected in {step_count} steps")
-                    return True
-                
-                elif data["type"] == "error":
-                    print_error(f"Error: {data['message']}")
-                    return False
-    
+        response = requests.post(f"{API_BASE_URL}{API_VERSION}/simulate", json=payload, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            print_success("Configured malware simulation successful")
+            print_info(f"Infected: {data.get('total_infected')}")
+            return True
+        else:
+            print_error(f"Failed: {response.status_code} - {response.text}")
+            return False
     except Exception as e:
-        print_error(f"WebSocket error: {str(e)}")
+        print_error(f"Error: {e}")
         return False
 
 
 def run_all_tests():
-    print(f"{Colors.BOLD}{Colors.OKBLUE}")
-    print("""
-╔════════════════════════════════════════════════════════════════════════╗
-║                    MSpread API Test Suite                              ║
-║            Testing FastAPI Endpoints and Functionality                 ║
-╚════════════════════════════════════════════════════════════════════════╝
-    """)
-    print(Colors.ENDC)
-    
     # Define all tests as a list of tuples (test_number, test_name, test_function, is_async)
     tests = [
         (1, "Server Health", test_server_health, False),
         (2, "Root Endpoint", test_root_endpoint, False),
-        (3, "Worm Simulation (50 nodes)", test_simulation_worm, False),
-        (4, "Virus Simulation", test_simulation_virus, False),
-        (5, "Ransomware Simulation", test_simulation_ransomware, False),
-        (6, "Network Topologies", test_different_topologies, False),
-        (7, "Infection Rate Comparison", test_infection_rate_comparison, False),
-        (8, "Multiple Initial Infections", test_multiple_initial_infected, False),
-        (9, "Device Attributes: All Admin", test_device_attributes_all_admin, False),
-        (10, "Device Attributes: All Non-Admin", test_device_attributes_all_non_admin, False),
-        (11, "Device Attributes: Mixed", test_device_attributes_mixed, False),
-        (12, "WebSocket Worm Simulation", test_websocket_simulation_worm, True),
-        (13, "WebSocket Virus Simulation", test_websocket_simulation_virus, True),
-        (14, "WebSocket Ransomware Simulation", test_websocket_simulation_ransomware, True),
+        (3, "Simple Simulation", lambda: test_simulation_simple(50), False),
+        (4, "Complex Simulation", lambda: test_simulation_complex(50), False),
+        (5, "Network Topologies", test_different_topologies, False),
+        (6, "Infection Rate Comparison", test_infection_rate_comparison, False),
+        (7, "Multiple Initial Infections", test_multiple_initial_infected, False),
+        (8, "Device Attributes: All Admin", test_device_attributes_all_admin, False),
+        (9, "Device Attributes: All Non-Admin", test_device_attributes_all_non_admin, False),
+        (10, "Device Attributes: Mixed", test_device_attributes_mixed, False),
+        (11, "WebSocket Simple Simulation", test_websocket_simulation_simple, True),
+        (12, "WebSocket Complex Simulation", test_websocket_simulation_complex, True),
+        (13, "Default Malware Config", test_default_malware, False),
+        (14, "Fully Configured Malware", test_configured_malware, False),
     ]
     
     return tests
@@ -810,6 +725,8 @@ def run_selected_tests(test_numbers: List[int] = None):
     
     # Run synchronous tests
     for test_num, test_name, test_func, _ in sync_tests:
+        if test_name in results:
+            continue
         results[test_name] = test_func()
     
     # Run asynchronous tests if any
@@ -859,7 +776,7 @@ def interactive_menu():
         
         try:
             test_numbers = [int(x.strip()) for x in user_input.split(',')]
-            valid_tests = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+            valid_tests = list(range(1, 15))
             
             invalid_tests = [t for t in test_numbers if t not in valid_tests]
             if invalid_tests:
@@ -892,7 +809,7 @@ Examples:
             '-t', '--test',
             nargs='+',
             type=int,
-            help='Test number(s) to run (1-11). Multiple tests can be specified.'
+            help='Test number(s) to run (1-14). Multiple tests can be specified.'
         )
         
         parser.add_argument(

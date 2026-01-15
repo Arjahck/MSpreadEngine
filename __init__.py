@@ -6,7 +6,7 @@ across networks ranging from small corporate environments to country-wide
 infrastructures using NetworkX.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.8"
 __author__ = "Arjahck"
 __description__ = "Malware Spreading Simulation Engine"
 

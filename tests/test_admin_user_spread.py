@@ -4,7 +4,7 @@ Test admin_user attribute spread restriction logic
 """
 
 from network_model import NetworkGraph
-from malware_engine.malware_base import Worm
+from malware_engine.malware_base import Malware
 from simulation import Simulator
 
 def test_admin_user_restriction():
@@ -26,7 +26,7 @@ def test_admin_user_restriction():
     print("  devices 5-9: admin_user=False")
     
     # Create malware
-    malware = Worm("worm_1", infection_rate=1.0)  # 100% infection for testing
+    malware = Malware("worm_1", infection_rate=1.0, avoids_admin=True)  # 100% infection for testing
     
     # Initialize simulator (which passes network to malware)
     simulator = Simulator(network, malware)
@@ -101,7 +101,7 @@ def test_admin_user_normal_spread():
     print("  devices 5-9: admin_user=False")
     
     # Create malware
-    malware = Worm("worm_1", infection_rate=1.0)  # 100% infection
+    malware = Malware("worm_1", infection_rate=1.0, avoids_admin=True)  # 100% infection
     
     # Initialize simulator
     simulator = Simulator(network, malware)
@@ -148,7 +148,7 @@ def test_mixed_spread():
     print(f"  Non-admin (15): devices 35-49")
     
     # Run full simulation
-    malware = Worm("worm_1", infection_rate=0.3)
+    malware = Malware("worm_1", infection_rate=0.3, avoids_admin=True)
     simulator = Simulator(network, malware)
     simulator.initialize(["device_0"])  # Start from admin
     

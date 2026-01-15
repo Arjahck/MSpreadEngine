@@ -110,7 +110,7 @@ class Simulator:
             "total_devices": total_devices,
             "total_infected": infected_count,
             "infection_percentage": (infected_count / total_devices * 100) if total_devices > 0 else 0,
-            "malware_type": self.malware.malware_type.value,
+            "malware_type": self.malware.malware_type.value if hasattr(self.malware.malware_type, 'value') else str(self.malware.malware_type),
             "history": self.history,
         }
 

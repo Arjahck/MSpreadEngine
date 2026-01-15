@@ -46,8 +46,13 @@ MSpreadEngine/
 │   ├── test_malware_engine.py
 │   └── ...
 │
+├── Docs/                      # Additional documentation
+│   ├── ADMIN_USER_LOGIC.md
+│   ├── ARCHITECTURE_DIAGRAM.md
+│   └── ...
+│
 ├── main.py                     # Application entry point (CLI)
-├── test_api_demo.py           # Comprehensive API test suite
+├── test_api_demo.py            # Comprehensive API test suite
 ├── __init__.py
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
@@ -138,7 +143,7 @@ The test suite (`test_api_demo.py`) includes:
 
 ```python
 from network_model import NetworkGraph
-from malware_engine.malware_base import Worm
+from malware_engine.malware_base import Malware
 from simulation import Simulator
 
 # Create network
@@ -146,7 +151,7 @@ network = NetworkGraph(network_type="scale_free")
 network.generate_topology(num_nodes=500, use_parallel=True, num_workers=8)
 
 # Create malware
-malware = Worm("worm_1", infection_rate=0.35)
+malware = Malware("malware_1", infection_rate=0.5, spread_pattern="bfs")
 
 # Run simulation
 simulator = Simulator(network, malware)
@@ -263,12 +268,6 @@ Run a malware simulation with real-time streaming updates (WebSocket).
 }
 ```
 
-**WebSocket Advantages**:
-- Real-time step-by-step progress updates
-- Ideal for live dashboards and visualization
-- Lower latency compared to polling HTTP requests
-- Enables animated network infection spreading display
-
 **Example Client Code** (Python):
 ```python
 import asyncio
@@ -311,48 +310,45 @@ Health check endpoint.
 }
 ```
 
-## Malware Types
+## Configurable Malware
 
-### Worm
-- **Characteristics**: Self-replicating, network-aware, aggressive spreading
-- **Infection Rate**: High (typically 0.3-0.5)
-- **Spread Pattern**: Active spreading to all neighbors
+MSpreadEngine uses a unified, highly configurable malware model. Instead of hardcoded types, you can define malware behavior using parameters.
 
-### Virus
-- **Characteristics**: Requires user interaction, selective spreading
-- **Infection Rate**: Medium (typically 0.2-0.4)
-- **Spread Pattern**: Reduced infection rate compared to worms
+### Configuration Parameters
 
-### Ransomware
-- **Characteristics**: Careful spreading, file encryption, ransom demands
-- **Infection Rate**: Medium-High (typically 0.25-0.45)
-- **Spread Pattern**: Balanced between detection avoidance and infection
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `malware_type` | string | `"custom"` | Label for categorization (worm, virus, etc.) |
+| `infection_rate` | float | `0.5` | Probability of infection (0.0 - 1.0) |
+| `latency` | int | `1` | Steps before newly infected node becomes infectious |
+| `spread_pattern` | string | `"random"` | `"random"` (probabilistic), `"bfs"` (aggressive), `"dfs"` (stealthy) |
+| `target_os` | list | `None` | List of OS strings to target (e.g., `["windows"]`). If None, targets all. |
+| `target_node_types` | list | `None` | List of node types to target. If None, targets all. |
+| `avoids_admin` | boolean | `False` | If True, blocks spread from non-admin source to admin target. |
+| `requires_interaction` | boolean | `False` | If True, reduces effective infection rate by 40%. |
+
+### Legacy Types (Concept)
+
+While the engine uses a single class, you can simulate classic types by configuring these parameters:
+
+- **Worm**: `infection_rate=0.5`, `spread_pattern="bfs"`
+- **Virus**: `infection_rate=0.3`, `requires_interaction=True`
+- **Ransomware**: `infection_rate=0.4`, `latency=3`
 
 ## Network Topology Models
 
 ### Scale-Free
 Power-law degree distribution. Realistic for real-world networks.
-```python
-NetworkGraph(network_type="scale_free")
-```
 
 ### Small-World
 High clustering with low average path length.
-```python
-NetworkGraph(network_type="small_world")
-```
+
 
 ### Random (Erdős-Rényi)
 Randomly connected nodes.
-```python
-NetworkGraph(network_type="random")
-```
 
 ### Complete
 Fully connected network.
-```python
-NetworkGraph(network_type="complete")
-```
 
 ## Device Attributes
 
@@ -402,7 +398,7 @@ Each device (node) in the network can have attributes that define its characteri
 
 ```python
 from network_model import NetworkGraph
-from malware_engine.malware_base import Worm
+from malware_engine.malware_base import Malware
 from simulation import Simulator
 
 # Create network with device attributes
@@ -448,38 +444,6 @@ print(attrs)
   - Block spread based on firewall configuration
   - Create device-specific vulnerabilities
 
-### Spread Logic Examples
-
-**Scenario 1: Non-Admin Device (admin_user=False)**
-```
-Device A (non-admin, infected) attempts to spread to neighbors:
-├── Device B (admin_user=True) → BLOCKED ✗
-├── Device C (admin_user=False) → Can spread ✓
-└── Device D (admin_user=False) → Can spread ✓
-```
-
-**Scenario 2: Admin Device (admin_user=True)**
-```
-Device A (admin, infected) spreads to all neighbors:
-├── Device B (admin_user=True) → Can spread ✓
-├── Device C (admin_user=False) → Can spread ✓
-└── Device D (admin_user=False) → Can spread ✓
-```
-
-## Unit Tests
-
-Run unit tests:
-
-```bash
-python -m pytest tests/
-```
-
-Run specific test file:
-
-```bash
-python -m pytest tests/test_network_model.py
-```
-
 ## Development
 
 ### Adding a New Malware Type
@@ -494,19 +458,15 @@ python -m pytest tests/test_network_model.py
 2. Modify `generate_topology()` method
 3. Test with sample data
 
-## Performance Considerations
-
-- **Large Networks**: For 1000+ nodes, consider using sparse network representations
-- **Simulation Steps**: Typical malware reaches equilibrium in 20-100 steps
-- **Parallelization**: Can parallelize independent simulation runs
-
 ## Future Enhancements
 
 - [X] Websocket implementation
-- [ ] Improve amount of parameter for nodes and malwares
+- [X] Improve amount of parameter for nodes 
+- [X] Improve amount of parameter for malwares
+- [X] Redo the malware_base.py class structure (one class malware ony) 
 - [ ] Countermeasure modeling (firewalls, patches, quarantine)
-- [ ] Multi-threaded simulation engine
-- [ ] Machine learning for infection pattern prediction
+- [ ] Vectorization and batch processing for simulation engine
+- [ ] Machine learning for infection pattern prediction (Graph Neural Network (GNN) on real-world network datasets for network_model, Reinforcement Learning (RL) Agents for simulation)
 - [ ] Advanced statistics and analytics
 - [ ] LLMVirus simulation (PoC - Virus)
 - [ ] Real-time visualization with Plotly/D3.js

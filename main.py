@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api import create_app
 from network_model import NetworkGraph
-from malware_engine.malware_base import Worm, Virus, Ransomware, MalwareType
+from malware_engine.malware_base import Malware, MalwareType
 from simulation import Simulator
 
 
@@ -117,14 +117,28 @@ def run_demo_simulation(
         
         # Create malware
         logger.info(f"[2/5] Initializing malware ({malware_type.capitalize()})...")
-        if malware_type.lower() == "worm":
-            malware = Worm("malware_1", infection_rate=infection_rate, latency=1)
-        elif malware_type.lower() == "virus":
-            malware = Virus("malware_1", infection_rate=infection_rate, latency=2)
+        
+        # Determine specific params based on legacy type (for demo purposes)
+        # Worm: latency 1
+        # Virus: latency 2, requires interaction
+        # Ransomware: latency 3
+        
+        latency = 1
+        requires_interaction = False
+        
+        if malware_type.lower() == "virus":
+            latency = 2
+            requires_interaction = True
         elif malware_type.lower() == "ransomware":
-            malware = Ransomware("malware_1", infection_rate=infection_rate, latency=3)
-        else:
-            raise ValueError(f"Unknown malware type: {malware_type}")
+            latency = 3
+            
+        malware = Malware(
+            "malware_1", 
+            malware_type=malware_type.lower(),
+            infection_rate=infection_rate, 
+            latency=latency,
+            requires_interaction=requires_interaction
+        )
         
         logger.info(f"    Malware type: {malware_type}")
         logger.info(f"    Infection rate: {malware.infection_rate}")

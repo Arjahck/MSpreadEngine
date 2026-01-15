@@ -8,26 +8,26 @@
 │                    http://localhost:8000                        │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │            FastAPI Application (api.py)                 │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │                                                          │  │
-│  │  ✓ POST /api/v1/simulate                               │  │
-│  │    - Accepts SimulationRequest                         │  │
-│  │    - Returns simulation results                        │  │
-│  │                                                          │  │
-│  │  ✓ WS /ws/simulate                                      │  │
-│  │    - Real-time streaming                              │  │
-│  │    - Same model with random distribution              │  │
-│  │                                                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │            FastAPI Application (api.py)                  │   │
+│  ├──────────────────────────────────────────────────────────┤   │
+│  │                                                          │   │
+│  │  ✓ POST /api/v1/simulate                                 │   │
+│  │    - Accepts SimulationRequest                           │   │
+│  │    - Returns simulation results                          │   │
+│  │                                                          │   │
+│  │  ✓ WS /ws/simulate                                       │   │
+│  │    - Real-time streaming                                 │   │
+│  │    - Same model with random distribution                 │   │
+│  │                                                          │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
-         ▲                           ▲                  ▲
-         │                           │                  │
-    ┌────┴────────┐          ┌──────┴────────┐  ┌─────┴──────┐
-    │              │          │               │  │            │
-    ▼              ▼          ▼               ▼  ▼            ▼
+         ▲                          ▲                  ▲
+         │                          │                  │
+    ┌────┴────────┐          ┌──────┴────────┐   ┌─────┴──────┐
+    │             │          │               │   │            │
+    ▼             ▼          ▼               ▼   ▼            ▼
   /docs        /redoc    /openapi.json    Python   cURL    Postman
 (Swagger UI) (ReDoc)   (Schema JSON)     Client   Client   Client
 ```
@@ -60,25 +60,25 @@ SimulationRequest
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                   Random Distribution Feature                 │
+│                   Random Distribution Feature                  │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
-│  NetworkConfig.node_distribution: str                         │
+│  NetworkConfig.node_distribution: str                          │
 │      │                                                         │
-│      ├─ "sequential" (default)                                │
-│      │   └─ Devices assigned in order                         │
-│      │      └─ device_0-69 [admin], device_70-99 [non-admin] │
-│      │         └─ Creates clustering                          │
+│      ├─ "sequential" (default)                                 │
+│      │   └─ Devices assigned in order                          │
+│      │      └─ device_0-69 [admin], device_70-99 [non-admin]   │
+│      │         └─ Creates clustering                           │
 │      │                                                         │
-│      └─ "random" (NEW) ← Solves clustering problem           │
-│          └─ Devices randomly shuffled                         │
-│             └─ device_5 [admin], device_13 [non-admin], ...  │
-│                └─ Realistic network mixing                    │
+│      └─ "random" (NEW) ← Solves clustering problem             │
+│          └─ Devices randomly shuffled                          │
+│             └─ device_5 [admin], device_13 [non-admin], ...    │
+│                └─ Realistic network mixing                     │
 │                                                                │
-│  _apply_node_definitions(network, definitions, distribution) │
-│      ├─ Builds list of (device_id, attributes) pairs         │
-│      ├─ if distribution == "random": shuffle pairs            │
-│      └─ Apply attributes to devices                           │
+│  _apply_node_definitions(network, definitions, distribution)   │
+│      ├─ Builds list of (device_id, attributes) pairs           │
+│      ├─ if distribution == "random": shuffle pairs             │
+│      └─ Apply attributes to devices                            │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -91,33 +91,33 @@ SimulationRequest
 │                    (auto-generated from models)                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Field Descriptions Layer                                      │
-│  ├─ num_nodes: "Number of devices in the network"            │
-│  ├─ network_type: "Type of network topology: ..."            │
-│  ├─ node_distribution: "sequential or random mixing"          │
-│  ├─ infection_rate: "Probability 0.0-1.0"                    │
-│  └─ ... (all fields documented)                              │
+│  Field Descriptions Layer                                       │
+│  ├─ num_nodes: "Number of devices in the network"               │
+│  ├─ network_type: "Type of network topology: ..."               │
+│  ├─ node_distribution: "sequential or random mixing"            │
+│  ├─ infection_rate: "Probability 0.0-1.0"                       │
+│  └─ ... (all fields documented)                                 │
 │                                                                 │
-│  Example Payloads Layer                                        │
-│  ├─ Example 1: Simple 70/30 Split                            │
-│  ├─ Example 2: Enterprise Three-Tier                         │
-│  ├─ Example 3: Mixed Operating Systems                       │
-│  ├─ Example 4: Progressive Security Hardening               │
-│  ├─ Example 5: Sequential Distribution (Clustered)          │
-│  ├─ Example 6: Simple Homogeneous Network                   │
-│  └─ Example 7: Multiple Initial Infections                  │
+│  Example Payloads Layer                                         │
+│  ├─ Example 1: Simple 70/30 Split                               │
+│  ├─ Example 2: Enterprise Three-Tier                            │
+│  ├─ Example 3: Mixed Operating Systems                          │
+│  ├─ Example 4: Progressive Security Hardening                   │
+│  ├─ Example 5: Sequential Distribution (Clustered)              │
+│  ├─ Example 6: Simple Homogeneous Network                       │
+│  └─ Example 7: Multiple Initial Infections                      │
 │                                                                 │
-│  Constraint Validation Layer                                   │
-│  ├─ infection_rate: ge=0.0, le=1.0                           │
-│  ├─ max_steps: ge=1                                           │
-│  ├─ latency: ge=0                                             │
-│  └─ ... (field-level constraints)                            │
+│  Constraint Validation Layer                                    │
+│  ├─ infection_rate: ge=0.0, le=1.0                              │
+│  ├─ max_steps: ge=1                                             │
+│  ├─ latency: ge=0                                               │
+│  └─ ... (field-level constraints)                               │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
          │
     ┌────┴───────────────────────────────────────┐
-    │                                            │
-    ▼                    ▼                        ▼
+    │                    │                       │
+    ▼                    ▼                       ▼
   Swagger UI          ReDoc                  JSON Schema
   (Interactive)    (Documentation)          (Machine-readable)
 ```
@@ -160,22 +160,22 @@ Device Attributes (APPLIED TO ALL NODES)
 Node Definitions Per-Batch (BATCH-SPECIFIC)
 
 ┌─────────────────────────────────────────────┐
-│ Example 2: Enterprise Three-Tier Network   │
+│ Example 2: Enterprise Three-Tier Network    │
 ├─────────────────────────────────────────────┤
 │                                             │
-│ Step 1: Defaults                           │
-│ {os: None, firewall_enabled: None, ...}    │
+│ Step 1: Defaults                            │
+│ {os: None, firewall_enabled: None, ...}     │
 │                                             │
-│ Step 2: Network-wide attributes            │
-│ {os: "Windows", firewall_enabled: True}    │
+│ Step 2: Network-wide attributes             │
+│ {os: "Windows", firewall_enabled: True}     │
 │                                             │
-│ Step 3: Batch 1 (50 servers)               │
-│ {firewall_enabled: True}  ← OVERRIDE       │
-│ Result: {os: "Windows", firewall: True}    │
+│ Step 3: Batch 1 (50 servers)                │
+│ {firewall_enabled: True}  ← OVERRIDE        │
+│ Result: {os: "Windows", firewall: True}     │
 │                                             │
-│ Step 4: Batch 3 (250 guests)               │
-│ {firewall_enabled: False}  ← OVERRIDE      │
-│ Result: {os: "Windows", firewall: False}   │
+│ Step 4: Batch 3 (250 guests)                │
+│ {firewall_enabled: False}  ← OVERRIDE       │
+│ Result: {os: "Windows", firewall: False}    │
 │                                             │
 └─────────────────────────────────────────────┘
 ```
@@ -312,33 +312,33 @@ Pydantic Model Validation
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│              MSpreadEngine v1.0 Features            │
+│              MSpreadEngine v1.0 Features             │
 ├──────────────────────────────────────────────────────┤
 │                                                      │
-│ Network Features                                   │
-│ ✓ Multiple topologies (scale-free, small-world)   │
-│ ✓ Device attributes (admin_user, os, firewall...)  │
-│ ✓ Node definitions (batching, segmentation)        │
-│ ✓ Random distribution (realistic mixing) ← NEW    │
-│                                                     │
-│ Malware Features                                  │
-│ ✓ Multiple types (worm, virus, ransomware)        │
-│ ✓ Configurable infection_rate                     │
-│ ✓ Configurable latency                            │
-│ ✓ Privilege-based spread restrictions             │
-│                                                     │
-│ Simulation Features                               │
-│ ✓ HTTP REST API                                   │
-│ ✓ WebSocket streaming                             │
-│ ✓ Step-by-step tracking                           │
-│ ✓ Multi-source infections                         │
-│                                                     │
-│ Documentation Features                            │
-│ ✓ Swagger/OpenAPI UI                             │
-│ ✓ 7 comprehensive examples ← NEW                 │
-│ ✓ Field descriptions ← NEW                        │
-│ ✓ 5 documentation files ← NEW                     │
-│                                                     │
+│ Network Features                                     │
+│ ✓ Multiple topologies (scale-free, small-world)     │
+│ ✓ Device attributes (admin_user, os, firewall...)   │
+│ ✓ Node definitions (batching, segmentation)         │
+│ ✓ Random distribution (realistic mixing) ← NEW      │
+│                                                      │
+│ Malware Features                                     │
+│ ✓ Multiple types (worm, virus, ransomware)          │
+│ ✓ Configurable infection_rate                       │
+│ ✓ Configurable latency                              │
+│ ✓ Privilege-based spread restrictions               │
+│                                                      │
+│ Simulation Features                                  │
+│ ✓ HTTP REST API                                     │
+│ ✓ WebSocket streaming                               │
+│ ✓ Step-by-step tracking                             │
+│ ✓ Multi-source infections                           │
+│                                                      │
+│ Documentation Features                               │
+│ ✓ Swagger/OpenAPI UI                                │
+│ ✓ 7 comprehensive examples ← NEW                    │
+│ ✓ Field descriptions ← NEW                          │
+│ ✓ 5 documentation files ← NEW                       │
+│                                                      │
 └──────────────────────────────────────────────────────┘
 ```
 

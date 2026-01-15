@@ -60,16 +60,23 @@ class NetworkConfig(BaseModel):
 
 class MalwareConfig(BaseModel):
     """Configuration for malware."""
-    malware_type: str = Field(..., description="Type of malware: worm, virus, ransomware", example="worm")
-    infection_rate: float = Field(0.3, description="Probability of infection spreading to each neighbor (0.0-1.0)", example=0.35, ge=0.0, le=1.0)
+    malware_type: str = Field(..., description="Type of malware: worm, virus, ransomware, custom", example="worm")
+    infection_rate: float = Field(0.5, description="Probability of infection spreading to each neighbor (0.0-1.0)", example=0.5, ge=0.0, le=1.0)
     latency: int = Field(1, description="Number of steps before infection can spread", example=1, ge=0)
+    spread_pattern: str = Field("random", description="Spread pattern: 'random', 'bfs', 'dfs'", example="random")
+    target_os: Optional[List[str]] = Field(None, description="List of target OS (e.g., ['windows', 'linux']) - if None, targets all", example=["windows"])
+    target_node_types: Optional[List[str]] = Field(None, description="List of target node types - if None, targets all", example=["server"])
+    avoids_admin: bool = Field(False, description="If True, cannot infect admin devices from non-admin devices", example=False)
+    requires_interaction: bool = Field(False, description="If True, reduces effective infection rate (simulates user interaction)", example=False)
     
     class Config:
         json_schema_extra = {
             "example": {
                 "malware_type": "worm",
-                "infection_rate": 0.35,
-                "latency": 1
+                "infection_rate": 0.5,
+                "latency": 1,
+                "spread_pattern": "random",
+                "avoids_admin": True
             }
         }
 
@@ -415,7 +422,7 @@ def create_app() -> FastAPI:
         """
         try:
             from network_model import NetworkGraph
-            from malware_engine.malware_base import Malware, Worm, Virus, Ransomware
+            from malware_engine.malware_base import Malware
             from simulation import Simulator
 
             # Create network
@@ -434,27 +441,17 @@ def create_app() -> FastAPI:
                 )
 
             # Create malware
-            malware_type = request.malware_config.malware_type.lower()
-            if malware_type == "worm":
-                malware = Worm(
-                    "malware_1",
-                    infection_rate=request.malware_config.infection_rate,
-                    latency=request.malware_config.latency,
-                )
-            elif malware_type == "virus":
-                malware = Virus(
-                    "malware_1",
-                    infection_rate=request.malware_config.infection_rate,
-                    latency=request.malware_config.latency,
-                )
-            elif malware_type == "ransomware":
-                malware = Ransomware(
-                    "malware_1",
-                    infection_rate=request.malware_config.infection_rate,
-                    latency=request.malware_config.latency,
-                )
-            else:
-                raise ValueError(f"Unknown malware type: {malware_type}")
+            malware = Malware(
+                malware_id="malware_1",
+                malware_type=request.malware_config.malware_type,
+                infection_rate=request.malware_config.infection_rate,
+                latency=request.malware_config.latency,
+                spread_pattern=request.malware_config.spread_pattern,
+                target_os=request.malware_config.target_os,
+                target_node_types=request.malware_config.target_node_types,
+                avoids_admin=request.malware_config.avoids_admin,
+                requires_interaction=request.malware_config.requires_interaction
+            )
 
             # Run simulation
             simulator = Simulator(network, malware)
@@ -479,7 +476,7 @@ def create_app() -> FastAPI:
             data = await websocket.receive_json()
             
             from network_model import NetworkGraph
-            from malware_engine.malware_base import Worm, Virus, Ransomware
+            from malware_engine.malware_base import Malware
             from simulation import Simulator
 
             # Parse configuration
@@ -502,27 +499,17 @@ def create_app() -> FastAPI:
                 _apply_node_definitions(network, node_defs, distribution=distribution)
 
             # Create malware
-            malware_type = malware_config.get("malware_type", "worm").lower()
-            if malware_type == "worm":
-                malware = Worm(
-                    "malware_1",
-                    infection_rate=malware_config.get("infection_rate", 0.3),
-                    latency=malware_config.get("latency", 1),
-                )
-            elif malware_type == "virus":
-                malware = Virus(
-                    "malware_1",
-                    infection_rate=malware_config.get("infection_rate", 0.3),
-                    latency=malware_config.get("latency", 1),
-                )
-            elif malware_type == "ransomware":
-                malware = Ransomware(
-                    "malware_1",
-                    infection_rate=malware_config.get("infection_rate", 0.3),
-                    latency=malware_config.get("latency", 1),
-                )
-            else:
-                raise ValueError(f"Unknown malware type: {malware_type}")
+            malware = Malware(
+                malware_id="malware_1",
+                malware_type=malware_config.get("malware_type", "custom"),
+                infection_rate=malware_config.get("infection_rate", 0.5),
+                latency=malware_config.get("latency", 1),
+                spread_pattern=malware_config.get("spread_pattern", "random"),
+                target_os=malware_config.get("target_os"),
+                target_node_types=malware_config.get("target_node_types"),
+                avoids_admin=malware_config.get("avoids_admin", False),
+                requires_interaction=malware_config.get("requires_interaction", False)
+            )
 
             # Initialize simulator
             simulator = Simulator(network, malware)
