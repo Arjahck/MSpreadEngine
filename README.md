@@ -470,7 +470,7 @@ print(attrs)
 - [ ] Countermeasure modeling (firewalls, patches, quarantine)
 - [ ] Vectorization and batch processing for simulation engine
 - [ ] Machine learning for infection pattern prediction (Graph Neural Network (GNN) on real-world network datasets for network_model, Reinforcement Learning (RL) Agents for simulation)
-- [ ] Advanced statistics anda nalytics
+- [X] Additional statistics and analytics
 - [ ] Polymorphic/Metamorphic Malware Simulation (PoC - Virus)
 - [ ] Real-time visualization with Plotly/D3.js
 
