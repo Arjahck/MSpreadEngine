@@ -65,6 +65,8 @@ class MalwareConfig(BaseModel):
     target_node_types: Optional[List[str]] = Field(None, description="List of target node types - if None, targets all", example=["server"])
     avoids_admin: bool = Field(False, description="If True, cannot infect admin devices from non-admin devices", example=False)
     requires_interaction: bool = Field(False, description="If True, reduces effective infection rate (simulates user interaction)", example=False)
+    bypass_firewall: bool = Field(False, description="If True, ignores firewall protections", example=False)
+    zero_day: bool = Field(False, description="If True, can infect fully_patched systems", example=False)
     
     class Config:
         json_schema_extra = {
@@ -73,7 +75,9 @@ class MalwareConfig(BaseModel):
                 "infection_rate": 0.5,
                 "latency": 1,
                 "spread_pattern": "random",
-                "avoids_admin": True
+                "avoids_admin": True,
+                "bypass_firewall": False,
+                "zero_day": False
             }
         }
 
@@ -430,7 +434,9 @@ def create_app() -> FastAPI:
                 target_os=request.malware_config.target_os,
                 target_node_types=request.malware_config.target_node_types,
                 avoids_admin=request.malware_config.avoids_admin,
-                requires_interaction=request.malware_config.requires_interaction
+                requires_interaction=request.malware_config.requires_interaction,
+                bypass_firewall=request.malware_config.bypass_firewall,
+                zero_day=request.malware_config.zero_day
             )
 
             simulator = Simulator(network, malware)
@@ -482,7 +488,9 @@ def create_app() -> FastAPI:
                 target_os=malware_config.get("target_os"),
                 target_node_types=malware_config.get("target_node_types"),
                 avoids_admin=malware_config.get("avoids_admin", False),
-                requires_interaction=malware_config.get("requires_interaction", False)
+                requires_interaction=malware_config.get("requires_interaction", False),
+                bypass_firewall=malware_config.get("bypass_firewall", False),
+                zero_day=malware_config.get("zero_day", False)
             )
 
             simulator = Simulator(network, malware)

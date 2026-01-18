@@ -587,27 +587,70 @@ async def test_websocket_simulation_simple() -> bool:
 
 
 async def test_websocket_simulation_complex() -> bool:
-    """Test WebSocket endpoint for complex simulation."""
-    print_header("Testing WebSocket Complex Simulation")
+    """Test WebSocket endpoint for complex simulation testing countermeasures."""
+    print_header("Testing WebSocket Complex Simulation (Countermeasures)")
     
     websocket_url = "ws://localhost:8000/ws/simulate"
+    
+    # 50 Nodes:
+    # - 20 Servers (Windows, Firewall=True, Patched)
+    # - 20 Workstations (Windows, Antivirus=True, Unpatched) 
+    # - 10 IoT (Linux, No protection)
     
     payload = {
         "network_config": {
             "num_nodes": 50,
-            "network_type": "scale_free"
+            "network_type": "scale_free",
+            "node_definitions": [
+                {
+                    "count": 20, 
+                    "attributes": {
+                        "device_type": "server", 
+                        "os": "Windows", 
+                        "firewall_enabled": True, 
+                        "patch_status": "fully_patched",
+                        "admin_user": True
+                    }
+                },
+                {
+                    "count": 20, 
+                    "attributes": {
+                        "device_type": "workstation", 
+                        "os": "Windows", 
+                        "antivirus": True, 
+                        "patch_status": "unpatched",
+                        "admin_user": False
+                    }
+                },
+                {
+                    "count": 10, 
+                    "attributes": {
+                        "device_type": "iot", 
+                        "os": "Linux", 
+                        "firewall_enabled": False,
+                        "admin_user": False
+                    }
+                }
+            ],
+            "node_distribution": "random"
         },
         "malware_config": {
-            "malware_type": "custom",
-            "infection_rate": 0.8,
+            "malware_type": "custom_apt",
+            "infection_rate": 0.9,
+            "latency": 1,
             "spread_pattern": "bfs",
-            "latency": 0
+            "target_os": ["Windows", "Linux"],
+            "bypass_firewall": True,  # Can hit servers despite firewall
+            "zero_day": False,        # Cannot hit fully_patched servers
+            "avoids_admin": False
         },
         "initial_infected": ["device_0"],
         "max_steps": 50
     }
     
     print_info(f"Connecting to WebSocket at {websocket_url}")
+    print_info("Scenario: Malware bypasses firewall but blocked by patches.")
+    print_info("Expected: Servers (patched) survive, Workstations/IoT get infected.")
     
     try:
         async with websockets.connect(websocket_url) as websocket:
@@ -624,11 +667,17 @@ async def test_websocket_simulation_complex() -> bool:
                         stats = data["statistics"]
                         print_success(f"Complex simulation completed via WebSocket")
                         print_info(f"Total Steps: {step_count}")
-                        print_info(f"Total Infected: {stats['total_infected']}")
+                        print_info(f"Total Infected: {stats['total_infected']}/{stats['total_devices']}")
+                        
+                        if "infected_demographics" in stats:
+                            print_info(f"Infected OS Breakdown: {stats['infected_demographics'].get('os_breakdown')}")
+                            
                         return True
                     
                     elif data["type"] == "step":
                         step_count += 1
+                        if step_count % 5 == 0:
+                            print_info(f"Step {data['step']}: {data['newly_infected']} new -> {data['total_infected']} total")
                     
                     elif data["type"] == "error":
                         print_error(f"Server error: {data['message']}")
