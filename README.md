@@ -470,11 +470,12 @@ print(attrs)
 - [X] Additional statistics and analytics
 - [X] Improve node parameter logic
 - [ ] Countermeasure modeling (firewalls, patches, quarantine)
-- [ ] Multinetwork definition and creation
-- [ ] Vectorization and batch processing for simulation engine
+- [X] Multinetwork definition and creation
+- [ ] (IN BETA) Vectorization and batch processing for simulation engine
 - [ ] Machine learning for infection pattern prediction (Graph Neural Network (GNN) on real-world network datasets for network_model, Reinforcement Learning (RL) Agents for simulation)
 - [ ] Polymorphic/Metamorphic Malware Simulation (PoC - Virus)
 - [ ] Real-time visualization with Plotly/D3.js
+- [ ] Add CVE library
 
 ## License
 
