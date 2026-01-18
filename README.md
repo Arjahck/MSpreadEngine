@@ -467,10 +467,12 @@ print(attrs)
 - [X] Improve amount of parameter for nodes 
 - [X] Improve amount of parameter for malwares
 - [X] Redo the malware_base.py class structure (one class malware ony) 
+- [X] Additional statistics and analytics
+- [ ] Multinetwork definition and creation
 - [ ] Countermeasure modeling (firewalls, patches, quarantine)
+- [ ] Impove node parameter logic
 - [ ] Vectorization and batch processing for simulation engine
 - [ ] Machine learning for infection pattern prediction (Graph Neural Network (GNN) on real-world network datasets for network_model, Reinforcement Learning (RL) Agents for simulation)
-- [X] Additional statistics and analytics
 - [ ] Polymorphic/Metamorphic Malware Simulation (PoC - Virus)
 - [ ] Real-time visualization with Plotly/D3.js
 
