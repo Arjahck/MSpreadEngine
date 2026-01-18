@@ -122,6 +122,20 @@ def test_simulation_simple(num_nodes: int = 50) -> bool:
             print_success(f"Simple simulation completed in {elapsed_time:.2f}s")
             print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
             print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
+            
+            # Check for new statistics
+            if "performance" in data:
+                perf = data["performance"]
+                print_info(f"Peak Velocity: {perf.get('peak_velocity')} infections/step")
+            else:
+                print_warning("Missing performance stats")
+                
+            if "network_topology" in data:
+                topo = data["network_topology"]
+                print_info(f"Avg Degree: {topo.get('avg_degree', 'N/A')}")
+            else:
+                print_warning("Missing network topology stats")
+
             return True
         else:
             print_error(f"Simulation failed with status code {response.status_code}")
@@ -176,7 +190,38 @@ def test_simulation_complex(num_nodes: int = 50) -> bool:
             print_success(f"Complex simulation completed in {elapsed_time:.2f}s")
             print_info(f"Total Infected: {data['total_infected']}/{data['total_devices']}")
             print_info(f"Infection Percentage: {data['infection_percentage']:.2f}%")
-            print_info("Note: Linux nodes should be excluded from infection")
+            
+            # Print Performance Stats
+            if "performance" in data:
+                perf = data["performance"]
+                print_info("\nPerformance Metrics:")
+                print_info(f"  Peak Velocity: {perf.get('peak_velocity')} infections/step")
+                print_info(f"  Step at Peak: {perf.get('step_at_peak')}")
+                print_info(f"  Steps to 50%: {perf.get('steps_to_50_percent')}")
+            
+            # Print Network Topology Stats
+            if "network_topology" in data:
+                topo = data["network_topology"]
+                print_info("\nNetwork Topology:")
+                print_info(f"  Nodes: {topo.get('num_nodes')}")
+                print_info(f"  Edges: {topo.get('num_edges')}")
+                if isinstance(topo.get('avg_degree'), (int, float)):
+                    print_info(f"  Avg Degree: {topo.get('avg_degree'):.2f}")
+                print_info(f"  Components: {topo.get('num_components', 'N/A')}")
+                
+                if "demographics" in topo:
+                    demo = topo["demographics"]
+                    print_info(f"  OS Breakdown: {demo.get('os_breakdown')}")
+                    if isinstance(demo.get('admin_ratio'), (int, float)):
+                        print_info(f"  Admin Ratio: {demo.get('admin_ratio'):.2f}")
+
+            # Print Infected Demographics
+            if "infected_demographics" in data:
+                inf_demo = data["infected_demographics"]
+                print_info("\nInfected Demographics:")
+                print_info(f"  By OS: {inf_demo.get('os_breakdown')}")
+
+            print_info("\nNote: Linux nodes should be excluded from infection")
             return True
         else:
             print_error(f"Simulation failed with status code {response.status_code}")

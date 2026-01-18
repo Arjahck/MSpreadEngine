@@ -211,23 +211,64 @@ class NetworkGraph:
             self.add_connection(source, target, **edge_data)
 
     def get_statistics(self, skip_expensive: bool = False) -> Dict:
+        """Get network statistics including structural metrics and attribute demographics."""
         stats = {
             "num_nodes": self.graph.number_of_nodes(),
             "num_edges": self.graph.number_of_edges(),
             "density": nx.density(self.graph),
         }
         
+        # Attribute Demographics (OS and Admin ratio)
+        os_counts = {}
+        admin_count = 0
+        for n in self.graph.nodes:
+            attrs = self.graph.nodes[n]
+            os = attrs.get('os', 'Unknown')
+            os_counts[str(os)] = os_counts.get(str(os), 0) + 1
+            if attrs.get('admin_user'):
+                admin_count += 1
+        
+        stats["demographics"] = {
+            "os_breakdown": os_counts,
+            "admin_ratio": admin_count / stats["num_nodes"] if stats["num_nodes"] > 0 else 0
+        }
+
+        # Degree Statistics
+        degrees = [d for n, d in self.graph.degree()]
+        if degrees:
+            stats["avg_degree"] = sum(degrees) / len(degrees)
+            stats["max_degree"] = max(degrees)
+        else:
+            stats["avg_degree"] = 0
+            stats["max_degree"] = 0
+        
         if not skip_expensive:
-            logger.info("Computing clustering coefficient (this may take time for large graphs)...")
+            # Component Analysis
+            components = list(nx.connected_components(self.graph))
+            stats["num_components"] = len(components)
+            stats["giant_component_size"] = len(max(components, key=len)) if components else 0
+
+            logger.info("Computing clustering coefficient...")
             stats["avg_clustering"] = nx.average_clustering(self.graph)
             
+            # Assortativity (Hub-to-hub connectivity)
+            try:
+                stats["assortativity"] = nx.degree_assortativity_coefficient(self.graph)
+            except Exception:
+                stats["assortativity"] = None
+
             if nx.is_connected(self.graph):
-                logger.info("Computing diameter (this may take time for large graphs)...")
+                logger.info("Computing diameter...")
                 stats["diameter"] = nx.diameter(self.graph)
             else:
                 stats["diameter"] = None
         else:
-            stats["avg_clustering"] = None
-            stats["diameter"] = None
+            stats.update({
+                "num_components": None,
+                "giant_component_size": None,
+                "avg_clustering": None,
+                "assortativity": None,
+                "diameter": None
+            })
             
         return stats

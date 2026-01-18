@@ -50,7 +50,9 @@ MSpreadEngine/
 │   ├── ADMIN_USER_LOGIC.md    # Privilege-based spread logic
 │   ├── NODE_DEFINITIONS.md    # Batch definition guide
 │   ├── DEVICE_ATTRIBUTES.md   # Supported device attributes
-│   └── WEBSOCKET_DOCUMENTATION.md # Real-time streaming API
+│   ├── WEBSOCKET_DOCUMENTATION.md # Real-time streaming API
+│   ├── STATISTICS_GUIDE.md    # Guide to network & simulation metrics
+│   └── ARCHITECTURE_DIAGRAM.md # System architecture overview
 │
 ├── main.py                     # Application entry point (CLI)
 ├── test_api_demo.py            # Comprehensive API test suite
@@ -468,8 +470,8 @@ print(attrs)
 - [ ] Countermeasure modeling (firewalls, patches, quarantine)
 - [ ] Vectorization and batch processing for simulation engine
 - [ ] Machine learning for infection pattern prediction (Graph Neural Network (GNN) on real-world network datasets for network_model, Reinforcement Learning (RL) Agents for simulation)
-- [ ] Advanced statistics and analytics
-- [ ] LLMVirus simulation (PoC - Virus)
+- [ ] Advanced statistics anda nalytics
+- [ ] Polymorphic/Metamorphic Malware Simulation (PoC - Virus)
 - [ ] Real-time visualization with Plotly/D3.js
 
 ## License
@@ -478,6 +480,35 @@ MIT License
 
 ## References
 
-- NetworkX Documentation: https://networkx.org/
-- FastAPI Documentation: https://fastapi.tiangolo.com/
-- Graph Theory in Network Security: [Academic papers on malware propagation]
+### Technical Documentation
+- **NetworkX**: https://networkx.org/
+- **FastAPI**: https://fastapi.tiangolo.com/
+
+### Academic Papers & Research
+
+#### Malware Propagation & Network Theory
+- **Epidemic Spreading in Scale-Free Networks**  
+  *Pastor-Satorras, R., & Vespignani, A. (2001). Physical Review Letters.*  
+  Foundational paper on how viruses spread in scale-free topologies (like the one implemented in `network_graph.py`).
+
+- **Directed-Graph Epidemiological Models of Computer Viruses**  
+  *Kephart, J. O., & White, S. R. (1991). IEEE Symposium on Security and Privacy.*  
+  Classic model for understanding viral spread probabilities and latency.
+
+#### Graph Neural Networks (GNN)
+- **Graph Neural Networks: A Review of Methods and Applications**  
+  *Zhou, J., et al. (2020). AI Open.*  
+  Comprehensive guide for implementing GNNs, relevant for future "Machine learning for infection pattern prediction".
+
+- **Deep Learning for Spatiotemporal Epidemic Modeling**  
+  *Various Authors (Recent field)*  
+  Relevant for training models to predict the "next victim" in the simulation.
+
+- **BlackMamba: AI-Synthesized Polymorphic Malware**  
+  *Anderson, H., & Ahuja, S. (2023).*  
+  Demonstrates malware that uses an LLM to dynamically **rewrite its own code** at runtime (shape-shifting/recoding) to evade EDR detection, perfectly matching the "recode itself" concept.
+
+#### AI-Driven Malware Mutation (Polymorphic/Metamorphic)
+- **Generating Adversarial Malware Examples for Black-Box Attacks based on GAN**  
+  *Hu, W., & Tan, Y. (2017). arXiv preprint arXiv:1702.05983.*  
+  Seminal work on using Generative Adversarial Networks (GANs) to generate "shape-sh
