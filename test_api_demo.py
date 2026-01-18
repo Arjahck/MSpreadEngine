@@ -741,6 +741,67 @@ def test_configured_malware() -> bool:
         return False
 
 
+def test_segmented_network() -> bool:
+    print_header("Testing Segmented Network (2 Subnets + Firewalls)")
+    
+    # Define 2 subnets of 50 nodes each, connected by 4 bridges
+    payload = {
+        "network_config": {
+            "num_nodes": 0, # Ignored for segmented topology but required by schema
+            "network_type": "segmented",
+            "subnets": [
+                {"num_nodes": 50, "network_type": "scale_free", "device_attributes": {"os": "Linux"}},
+                {"num_nodes": 50, "network_type": "random", "device_attributes": {"os": "Windows"}}
+            ],
+            "interconnects": [
+                {"source_subnet": 0, "target_subnet": 1, "source_node": 0, "target_node": 0, "firewall": True},
+                {"source_subnet": 0, "target_subnet": 1, "source_node": 1, "target_node": 1, "firewall": True},
+                {"source_subnet": 0, "target_subnet": 1, "source_node": 2, "target_node": 2, "firewall": True},
+                {"source_subnet": 0, "target_subnet": 1, "source_node": 3, "target_node": 3, "firewall": True}
+            ]
+        },
+        "malware_config": {
+            "malware_type": "custom",
+            "infection_rate": 0.8,
+            "bypass_firewall": False 
+        },
+        "initial_infected": ["device_0"],
+        "max_steps": 50
+    }
+    
+    print_info("Scenario: Infection starts in Subnet 0 (Linux). Bridges have Firewall enabled.")
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}{API_VERSION}/simulate", json=payload, timeout=20)
+        if response.status_code == 200:
+            data = response.json()
+            print_success("Segmented simulation successful")
+            
+            # Print Total Network Composition
+            if "network_topology" in data:
+                topo_demo = data["network_topology"].get("demographics", {})
+                print_info(f"Total Network:   {topo_demo.get('os_breakdown')}")
+                
+            # Print Infection Results
+            print_info(f"Total Infected:  {data['total_infected']}")
+            if "infected_demographics" in data:
+                print_info(f"Infection Breakdown: {data['infected_demographics']['os_breakdown']}")
+            
+            windows_infected = data.get("infected_demographics", {}).get("os_breakdown", {}).get("Windows", 0)
+            if windows_infected < 10:
+                print_success(f"Firewall effective! Only {windows_infected} Windows nodes infected.")
+            else:
+                print_warning(f"Firewall breached? {windows_infected} Windows nodes infected.")
+                
+            return True
+        else:
+            print_error(f"Failed: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print_error(f"Error: {e}")
+        return False
+
+
 def run_all_tests():
     # Define all tests as a list of tuples (test_number, test_name, test_function, is_async)
     tests = [
@@ -758,6 +819,7 @@ def run_all_tests():
         (12, "WebSocket Complex Simulation", test_websocket_simulation_complex, True),
         (13, "Default Malware Config", test_default_malware, False),
         (14, "Fully Configured Malware", test_configured_malware, False),
+        (15, "Segmented Network Simulation", test_segmented_network, False),
     ]
     
     return tests
@@ -870,7 +932,7 @@ def interactive_menu():
         
         try:
             test_numbers = [int(x.strip()) for x in user_input.split(',')]
-            valid_tests = list(range(1, 15))
+            valid_tests = list(range(1, 16))
             
             invalid_tests = [t for t in test_numbers if t not in valid_tests]
             if invalid_tests:
@@ -903,7 +965,7 @@ Examples:
             '-t', '--test',
             nargs='+',
             type=int,
-            help='Test number(s) to run (1-14). Multiple tests can be specified.'
+            help='Test number(s) to run (1-15). Multiple tests can be specified.'
         )
         
         parser.add_argument(

@@ -33,11 +33,14 @@ class NodeDefinition(BaseModel):
 
 
 class NetworkConfig(BaseModel):
-    num_nodes: int = Field(..., description="Number of devices in the network", example=100)
-    network_type: str = Field("scale_free", description="Type of network topology: scale_free, small_world, random, complete", example="scale_free")
+    """Configuration for network topology."""
+    num_nodes: int = Field(100, description="Number of devices in the network (ignored for segmented topology)", example=100)
+    network_type: str = Field("scale_free", description="Type of network topology: scale_free, small_world, random, complete, segmented", example="scale_free")
     device_attributes: Optional[Dict] = Field(None, description="Attributes to apply to ALL nodes uniformly", example={"os": "Windows Server 2019", "firewall_enabled": True})
     node_definitions: Optional[List[NodeDefinition]] = Field(None, description="Batch definitions for per-group device attributes (creates network segmentation)")
     node_distribution: str = Field("sequential", description="Distribution mode: 'sequential' (clusters devices by type) or 'random' (mixes device types throughout network)", example="random")
+    subnets: Optional[List[Dict]] = Field(None, description="Subnet configurations for segmented topology")
+    interconnects: Optional[List[Dict]] = Field(None, description="Inter-subnet connection configurations")
     
     class Config:
         json_schema_extra = {
@@ -415,7 +418,9 @@ def create_app() -> FastAPI:
             network = NetworkGraph(network_type=request.network_config.network_type)
             network.generate_topology(
                 request.network_config.num_nodes,
-                device_attributes=request.network_config.device_attributes
+                device_attributes=request.network_config.device_attributes,
+                subnets=request.network_config.subnets,
+                interconnects=request.network_config.interconnects
             )
 
             if request.network_config.node_definitions:
@@ -471,7 +476,9 @@ def create_app() -> FastAPI:
             network = NetworkGraph(network_type=network_config.get("network_type", "scale_free"))
             network.generate_topology(
                 network_config.get("num_nodes", 100),
-                device_attributes=network_config.get("device_attributes", None)
+                device_attributes=network_config.get("device_attributes", None),
+                subnets=network_config.get("subnets", None),
+                interconnects=network_config.get("interconnects", None)
             )
 
             if network_config.get("node_definitions"):

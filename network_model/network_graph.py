@@ -89,6 +89,18 @@ class NetworkGraph:
         
         logger.info(f"Generating {num_nodes}-node {self.network_type} topology...")
         
+        if self.network_type == "segmented":
+            # kwargs should contain 'subnets' and 'interconnects'
+            self._generate_segmented_topology(kwargs.get('subnets', []), kwargs.get('interconnects', []))
+            # Calculate elapsed time and log inside generate_segmented_topology or here?
+            # Since _generate... does the heavy lifting, we can just let it finish.
+            # We need to ensure device_states are set.
+            elapsed_time = time.time() - start_time
+            logger.info(f"Segmented topology generated in {elapsed_time:.2f}s")
+            logger.info(f"  Nodes: {self.graph.number_of_nodes()}")
+            logger.info(f"  Edges: {self.graph.number_of_edges()}")
+            return
+
         if self.network_type == "scale_free":
             logger.info("Creating Barabasi-Albert scale-free graph...")
             base_graph = nx.barabasi_albert_graph(num_nodes, 3)
@@ -272,3 +284,93 @@ class NetworkGraph:
             })
             
         return stats
+
+    def _generate_segmented_topology(self, subnets: List[Dict], interconnects: List[Dict]) -> None:
+        """
+        Generate a segmented topology by combining multiple sub-networks.
+        """
+        logger.info(f"Generating segmented topology with {len(subnets)} subnets...")
+        
+        subnet_graphs = []
+        node_offset = 0
+        
+        # 1. Generate each subnet
+        for i, subnet_conf in enumerate(subnets):
+            num_nodes = subnet_conf.get('num_nodes', 50)
+            net_type = subnet_conf.get('network_type', 'random')
+            logger.info(f"  Subnet {i}: {num_nodes} nodes, {net_type}")
+            
+            # Create temporary graph for subnet structure
+            if net_type == "scale_free":
+                sub_G = nx.barabasi_albert_graph(num_nodes, 2)
+            elif net_type == "small_world":
+                sub_G = nx.watts_strogatz_graph(num_nodes, 4, 0.3)
+            elif net_type == "complete":
+                sub_G = nx.complete_graph(num_nodes)
+            else:
+                sub_G = nx.erdos_renyi_graph(num_nodes, 0.1)
+                
+            # Apply node attributes
+            default_attrs = self.DEFAULT_DEVICE_ATTRIBUTES.copy()
+            if 'device_attributes' in subnet_conf:
+                default_attrs.update(subnet_conf['device_attributes'])
+                
+            # Relabel nodes to be globally unique
+            # Mapping: local_id -> "device_{global_id}"
+            mapping = {node: f"device_{node + node_offset}" for node in sub_G.nodes()}
+            sub_G = nx.relabel_nodes(sub_G, mapping)
+            
+            # Add nodes to main graph with attributes
+            for node_id in sub_G.nodes():
+                self.graph.add_node(node_id, **default_attrs)
+                self.device_states[node_id] = "healthy"
+            logger.debug(f"  Added nodes to main graph: {list(self.graph.nodes())}")
+            
+            # Add edges
+            for u, v in sub_G.edges():
+                self.graph.add_edge(u, v, connection_type="network")
+            
+            subnet_graphs.append({
+                "offset": node_offset,
+                "count": num_nodes,
+                "mapping": mapping  # local index -> global ID string
+            })
+            node_offset += num_nodes
+
+        # 2. Process node definitions (batches) per subnet if needed
+        # (This is handled by the API applying attributes *after* generation, 
+        # so we don't strictly need to do it here, but we ensured IDs are predictable: device_0...device_N)
+
+        # 3. Create Interconnects (Bridges/Firewalls)
+        logger.info("Creating network interconnects...")
+        for link in interconnects:
+            src_subnet = link.get('source_subnet')
+            tgt_subnet = link.get('target_subnet')
+            
+            if src_subnet >= len(subnets) or tgt_subnet >= len(subnets):
+                logger.warning(f"Skipping invalid link: Subnets {src_subnet}->{tgt_subnet} do not exist")
+                continue
+                
+            # Default: connect node 0 of source to node 0 of target (Gateway to Gateway)
+            src_node_idx = link.get('source_node', 0) 
+            tgt_node_idx = link.get('target_node', 0)
+            
+            # Resolve to global IDs
+            # subnet_graphs[i]['offset'] tells us the start index
+            # So local node 0 in subnet 1 is global node (offset + 0)
+            
+            u_global_idx = subnet_graphs[src_subnet]['offset'] + src_node_idx
+            v_global_idx = subnet_graphs[tgt_subnet]['offset'] + tgt_node_idx
+            
+            u_id = f"device_{u_global_idx}"
+            v_id = f"device_{v_global_idx}"
+            
+            if self.graph.has_node(u_id) and self.graph.has_node(v_id):
+                logger.info(f"  Bridge: {u_id} (Subnet {src_subnet}) <-> {v_id} (Subnet {tgt_subnet})")
+                self.graph.add_edge(u_id, v_id, connection_type="interconnect")
+                
+                # Apply firewall/choke point attributes if specified
+                if link.get('firewall'):
+                    self.graph.nodes[u_id]['firewall_enabled'] = True
+                    self.graph.nodes[v_id]['firewall_enabled'] = True
+        logger.debug(f"Final graph nodes after segmentation: {list(self.graph.nodes())}")
