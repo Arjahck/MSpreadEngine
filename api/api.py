@@ -16,6 +16,7 @@ import random
 class NodeDefinition(BaseModel):
     count: int  # Number of nodes in this batch
     attributes: Dict  # Attributes to apply to nodes in this batch
+    vulnerabilities: Optional[List[str]] = Field(None, description="List of CVEs present on these nodes", example=["CVE-2021-34527", "CVE-2023-9999"])
     
     class Config:
         json_schema_extra = {
@@ -27,7 +28,8 @@ class NodeDefinition(BaseModel):
                     "firewall_enabled": True,
                     "antivirus": True,
                     "patch_status": "fully_patched"
-                }
+                },
+                "vulnerabilities": ["CVE-2021-34527", "CVE-2023-9999"]
             }
         }
 
@@ -70,6 +72,8 @@ class MalwareConfig(BaseModel):
     requires_interaction: bool = Field(False, description="If True, reduces effective infection rate (simulates user interaction)", example=False)
     bypass_firewall: bool = Field(False, description="If True, ignores firewall protections", example=False)
     zero_day: bool = Field(False, description="If True, can infect fully_patched systems", example=False)
+    exploits: Optional[List[str]] = Field(None, description="List of CVEs this malware exploits", example=["CVE-2021-34527"])
+    cve_only: bool = Field(False, description="If True, infection only occurs if a matching CVE is found (ignoring general infection rate)", example=False)
     
     class Config:
         json_schema_extra = {
@@ -80,7 +84,9 @@ class MalwareConfig(BaseModel):
                 "spread_pattern": "random",
                 "avoids_admin": True,
                 "bypass_firewall": False,
-                "zero_day": False
+                "zero_day": False,
+                "exploits": ["CVE-2021-34527"],
+                "cve_only": True
             }
         }
 
@@ -347,9 +353,14 @@ def _apply_node_definitions(network, node_definitions: List[NodeDefinition], dis
     node_id = 0
     
     for definition in node_definitions:
+        # Prepare attributes, converting vulnerabilities list to set for O(1) lookup
+        attributes = definition.attributes.copy()
+        if definition.vulnerabilities:
+            attributes["vulnerabilities"] = set(definition.vulnerabilities)
+
         for _ in range(definition.count):
             device_id = f"device_{node_id}"
-            device_attr_pairs.append((device_id, definition.attributes))
+            device_attr_pairs.append((device_id, attributes))
             node_id += 1
     
     if distribution.lower() == "random":
@@ -441,7 +452,9 @@ def create_app() -> FastAPI:
                 avoids_admin=request.malware_config.avoids_admin,
                 requires_interaction=request.malware_config.requires_interaction,
                 bypass_firewall=request.malware_config.bypass_firewall,
-                zero_day=request.malware_config.zero_day
+                zero_day=request.malware_config.zero_day,
+                exploits=request.malware_config.exploits,
+                cve_only=request.malware_config.cve_only
             )
 
             simulator = Simulator(network, malware)
@@ -497,7 +510,9 @@ def create_app() -> FastAPI:
                 avoids_admin=malware_config.get("avoids_admin", False),
                 requires_interaction=malware_config.get("requires_interaction", False),
                 bypass_firewall=malware_config.get("bypass_firewall", False),
-                zero_day=malware_config.get("zero_day", False)
+                zero_day=malware_config.get("zero_day", False),
+                exploits=malware_config.get("exploits"),
+                cve_only=malware_config.get("cve_only", False)
             )
 
             simulator = Simulator(network, malware)

@@ -35,6 +35,7 @@ MSpreadEngine/
 │
 ├── simulation/                 # Core simulation loop
 │   ├── __init__.py
+│   ├── fast_simulator.py       # BETA vectorized simulation
 │   └── simulator.py            # Main simulation engine with time-step execution
 │
 ├── api/                        # API layer (FastAPI)
@@ -140,7 +141,6 @@ The test suite (`test_api_demo.py`) includes:
 - ✅ Infection rate impact analysis
 - ✅ Multiple initial infection scenarios
 - ✅ WebSocket real-time streaming tests
-- ✅ Color-coded test results with detailed output
 
 ### Programmatic Usage
 
@@ -330,14 +330,6 @@ MSpreadEngine uses a unified, highly configurable malware model. Instead of hard
 | `avoids_admin` | boolean | `False` | If True, blocks spread from non-admin source to admin target. |
 | `requires_interaction` | boolean | `False` | If True, reduces effective infection rate by 40%. |
 
-### Legacy Types (Concept)
-
-While the engine uses a single class, you can simulate classic types by configuring these parameters:
-
-- **Worm**: `infection_rate=0.5`, `spread_pattern="bfs"`
-- **Virus**: `infection_rate=0.3`, `requires_interaction=True`
-- **Ransomware**: `infection_rate=0.4`, `latency=3`
-
 ## Network Topology Models
 
 ### Scale-Free
@@ -345,7 +337,6 @@ Power-law degree distribution. Realistic for real-world networks.
 
 ### Small-World
 High clustering with low average path length.
-
 
 ### Random (Erdős-Rényi)
 Randomly connected nodes.
@@ -469,23 +460,19 @@ print(attrs)
 - [X] Redo the malware_base.py class structure (one class malware ony) 
 - [X] Additional statistics and analytics
 - [X] Improve node parameter logic
-- [ ] Countermeasure modeling (firewalls, patches, quarantine)
+- [X] Countermeasure modeling (firewalls, patches, quarantine)
 - [X] Multinetwork definition and creation
 - [ ] (IN BETA) Vectorization and batch processing for simulation engine
 - [ ] Machine learning for infection pattern prediction (Graph Neural Network (GNN) on real-world network datasets for network_model, Reinforcement Learning (RL) Agents for simulation)
 - [ ] Polymorphic/Metamorphic Malware Simulation (PoC - Virus)
 - [ ] Real-time visualization with Plotly/D3.js
-- [ ] Add CVE library
+- [X] Add CVE library
+- [ ] Import/epxort graph generation 
+- [ ] Improve countermeasures
 
 ## License
 
 MIT License
-
-## References
-
-### Technical Documentation
-- **NetworkX**: https://networkx.org/
-- **FastAPI**: https://fastapi.tiangolo.com/
 
 ### Academic Papers & Research
 

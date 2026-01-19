@@ -802,6 +802,80 @@ def test_segmented_network() -> bool:
         return False
 
 
+def test_cve_exploitation() -> bool:
+    print_header("Testing CVE Exploitation (Targeted Attack)")
+    
+    # Generate 150 random CVEs plus our target CVE
+    # This simulates a "noisy" vulnerability scan result to test O(1) lookup performance
+    extra_cves = [f"CVE-202{i%10}-{10000+i}" for i in range(150)]
+    target_cve = "CVE-2023-1234"
+    node_cves = extra_cves + [target_cve]
+    
+    # 50 Nodes total:
+    # - 10 Vulnerable Servers (Have CVE-2023-1234 + 150 noise CVEs)
+    # - 40 Secure Workstations (No CVEs)
+    payload = {
+        "network_config": {
+            "num_nodes": 5000,
+            "network_type": "scale_free",
+            "node_definitions": [
+                {
+                    "count": 1000,
+                    "attributes": {
+                        "device_type": "vulnerable_server",
+                        "os": "Windows Server 2016"
+                    },
+                    "vulnerabilities": node_cves
+                },
+                {
+                    "count": 4000,
+                    "attributes": {
+                        "device_type": "secure_workstation",
+                        "os": "Windows 10"
+                    }
+                }
+            ],
+            "node_distribution": "random"
+        },
+        "malware_config": {
+            "malware_type": "exploit_kit",
+            "infection_rate": 0.5,
+            "latency": 1,
+            "exploits": ["CVE-2023-1234"],
+            "cve_only": True  # Crucial: ONLY infect nodes with this CVE
+        },
+        "initial_infected": ["device_0"],
+        "max_steps": 30
+    }
+    
+    print_info("Scenario: Malware with 'cve_only=True' targeting CVE-2023-1234")
+    print_info("Network: 1000 Vulnerable Nodes (CVE-2023-1234), 4000 Secure Nodes")
+    print_info("Expected: Exactly 1000 nodes (or fewer if disconnected) should be infected.")
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}{API_VERSION}/simulate", json=payload, timeout=20)
+        if response.status_code == 200:
+            data = response.json()
+            total_infected = data['total_infected']
+            
+            print_success("CVE Simulation successful")
+            print_info(f"Total Infected: {total_infected}/5000")
+            print_info(f"Total Steps: {data.get('total_steps', 'N/A')}")
+            
+            if total_infected <= 1000:
+                print_success(f"Perfect! Infection contained to vulnerable nodes (<= 1000).")
+                return True
+            else:
+                print_error(f"Failure! Infection spread to {total_infected} nodes. Should be max 1000.")
+                return False
+        else:
+            print_error(f"Failed: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print_error(f"Error: {e}")
+        return False
+
+
 def run_all_tests():
     # Define all tests as a list of tuples (test_number, test_name, test_function, is_async)
     tests = [
@@ -820,6 +894,7 @@ def run_all_tests():
         (13, "Default Malware Config", test_default_malware, False),
         (14, "Fully Configured Malware", test_configured_malware, False),
         (15, "Segmented Network Simulation", test_segmented_network, False),
+        (16, "CVE Exploitation Attack", test_cve_exploitation, False),
     ]
     
     return tests

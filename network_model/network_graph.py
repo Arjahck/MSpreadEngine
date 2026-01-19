@@ -30,7 +30,8 @@ class NetworkGraph:
         "device_type": "workstation",
         "firewall_enabled": None,
         "antivirus": None,
-        "admin_user": True, 
+        "admin_user": True,
+        "vulnerabilities": None,
     }
 
     def __init__(self, network_type: str = "scale_free"):
@@ -43,6 +44,12 @@ class NetworkGraph:
         device_attrs = self.DEFAULT_DEVICE_ATTRIBUTES.copy()
         device_attrs.update(attributes)
         
+        # Ensure vulnerabilities is a set for O(1) lookup
+        if device_attrs.get("vulnerabilities") is None:
+            device_attrs["vulnerabilities"] = set()
+        elif isinstance(device_attrs["vulnerabilities"], list):
+            device_attrs["vulnerabilities"] = set(device_attrs["vulnerabilities"])
+
         self.graph.add_node(device_id, **device_attrs)
         self.device_states[device_id] = "healthy"
 
@@ -51,6 +58,8 @@ class NetworkGraph:
             raise ValueError(f"Device {device_id} not found in network")
         
         for key, value in attributes.items():
+            if key == "vulnerabilities" and isinstance(value, list):
+                value = set(value)
             self.graph.nodes[device_id][key] = value
 
     def get_device_attributes(self, device_id: str) -> Dict:
@@ -122,6 +131,12 @@ class NetworkGraph:
         if device_attributes:
             base_attrs.update(device_attributes)
         
+        # Ensure vulnerabilities is a set for O(1) lookup
+        if base_attrs.get("vulnerabilities") is None:
+            base_attrs["vulnerabilities"] = set()
+        elif isinstance(base_attrs["vulnerabilities"], list):
+            base_attrs["vulnerabilities"] = set(base_attrs["vulnerabilities"])
+
         node_list = [(f"device_{node}", base_attrs.copy()) for node in base_graph.nodes()]
         
         if HAS_TQDM:
