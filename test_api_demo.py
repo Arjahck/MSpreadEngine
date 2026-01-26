@@ -691,6 +691,105 @@ async def test_websocket_simulation_complex() -> bool:
         return False
 
 
+async def test_two_phase_protocol() -> bool:
+    """Test the new Two-Phase Interactive Protocol (Build -> Infect)."""
+    print_header("Testing Two-Phase Interactive Protocol")
+    
+    websocket_url = "ws://localhost:8000/ws/simulate"
+    
+    # Phase 1: Build Network
+    phase1_payload = {
+        "command": "build_network",
+        "network_config": {
+            "num_nodes": 40,
+            "network_type": "scale_free",
+            "device_attributes": {"os": "Linux", "admin_user": True}
+        }
+    }
+    
+    # Phase 2: Start Simulation
+    # Note: We will select patient zero dynamically based on the topology we receive
+    phase2_payload = {
+        "command": "start_simulation",
+        "malware_config": {
+            "malware_type": "worm",
+            "infection_rate": 0.8,
+            "latency": 1
+        },
+        "initial_infected": [], # Will be filled below
+        "max_steps": 30
+    }
+    
+    print_info(f"Connecting to WebSocket at {websocket_url}")
+    
+    try:
+        async with websockets.connect(websocket_url) as websocket:
+            print_success("Connected to WebSocket")
+            
+            # --- EXECUTE PHASE 1 ---
+            print_info("Sending PHASE 1: build_network command...")
+            await websocket.send(json.dumps(phase1_payload))
+            
+            # Wait for network_ready
+            response = await websocket.recv()
+            data = json.loads(response)
+            
+            if data.get("type") == "network_ready":
+                topo = data["topology"]
+                node_count = data["total_nodes"]
+                print_success(f"Received Network Topology: {node_count} nodes")
+                
+                # Verify we got detailed node info
+                first_node = topo["nodes"][0]
+                print_info(f"Sample Node: ID={first_node.get('id')} OS={first_node.get('os')}")
+                
+                # Dynamically pick Patient Zero (e.g., the node with highest degree or just the first one)
+                patient_zero = first_node.get("id")
+                print_info(f"Dynamically selected Patient Zero: {patient_zero}")
+                
+                phase2_payload["initial_infected"] = [patient_zero]
+                
+            else:
+                print_error(f"Expected 'network_ready' but got: {data.get('type')}")
+                return False
+                
+            # --- EXECUTE PHASE 2 ---
+            print_info("Sending PHASE 2: start_simulation command...")
+            await websocket.send(json.dumps(phase2_payload))
+            
+            # Read stream until complete
+            step_count = 0
+            while True:
+                try:
+                    message = await websocket.recv()
+                    data = json.loads(message)
+                    
+                    if data["type"] == "initialized":
+                        print_success("Simulation Initialized")
+                        
+                    elif data["type"] == "step":
+                        step_count += 1
+                        # print_info(f"Step {data['step']}: {data['newly_infected']} new infections")
+                        
+                    elif data["type"] == "complete":
+                        stats = data["statistics"]
+                        print_success(f"Two-Phase Simulation Completed Successfully!")
+                        print_info(f"Total Infected: {stats['total_infected']}/{stats['total_devices']}")
+                        return True
+                        
+                    elif data["type"] == "error":
+                        print_error(f"Server Error: {data['message']}")
+                        return False
+                        
+                except asyncio.TimeoutError:
+                    print_error("Timeout waiting for simulation steps")
+                    return False
+                    
+    except Exception as e:
+        print_error(f"WebSocket Error: {str(e)}")
+        return False
+
+
 def test_default_malware() -> bool:
     print_header("Testing Default Malware Config")
     payload = {
@@ -895,6 +994,7 @@ def run_all_tests():
         (14, "Fully Configured Malware", test_configured_malware, False),
         (15, "Segmented Network Simulation", test_segmented_network, False),
         (16, "CVE Exploitation Attack", test_cve_exploitation, False),
+        (17, "Two-Phase Protocol (New)", test_two_phase_protocol, True),
     ]
     
     return tests

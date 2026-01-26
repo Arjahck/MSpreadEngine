@@ -471,79 +471,133 @@ def create_app() -> FastAPI:
         """
         WebSocket endpoint for real-time simulation streaming.
         
-        Receives simulation configuration and streams step-by-step updates.
+        Supports interactive two-phase protocol:
+        1. build_network -> Returns topology
+        2. start_simulation -> Runs simulation
+        
+        Also supports legacy single-shot execution.
         """
         await websocket.accept()
+        
+        # Session state
+        network = None
+        
         try:
-            data = await websocket.receive_json()
-            
-            from network_model import NetworkGraph
-            from malware_engine.malware_base import Malware
-            from simulation import Simulator
+            while True:
+                data = await websocket.receive_json()
+                command = data.get("command")
+                
+                # Support legacy single-shot payload (backwards compatibility)
+                if not command and "network_config" in data:
+                    command = "legacy_run"
+                
+                # --- PHASE 1: BUILD NETWORK ---
+                if command == "build_network" or command == "legacy_run":
+                    from network_model import NetworkGraph
+                    
+                    network_config = data.get("network_config", {})
+                    
+                    network = NetworkGraph(network_type=network_config.get("network_type", "scale_free"))
+                    network.generate_topology(
+                        network_config.get("num_nodes", 100),
+                        device_attributes=network_config.get("device_attributes", None),
+                        subnets=network_config.get("subnets", None),
+                        interconnects=network_config.get("interconnects", None)
+                    )
 
-            network_config = data.get("network_config", {})
-            malware_config = data.get("malware_config", {})
-            initial_infected = data.get("initial_infected", [])
-            max_steps = data.get("max_steps", 100)
+                    if network_config.get("node_definitions"):
+                        node_defs = [NodeDefinition(**d) for d in network_config.get("node_definitions", [])]
+                        distribution = network_config.get("node_distribution", "sequential")
+                        _apply_node_definitions(network, node_defs, distribution=distribution)
 
-            network = NetworkGraph(network_type=network_config.get("network_type", "scale_free"))
-            network.generate_topology(
-                network_config.get("num_nodes", 100),
-                device_attributes=network_config.get("device_attributes", None),
-                subnets=network_config.get("subnets", None),
-                interconnects=network_config.get("interconnects", None)
-            )
+                    # Serialize topology for frontend visualization
+                    nodes_data = []
+                    # NetworkX .nodes(data=True) returns (node_id, attribute_dict)
+                    for node_id, attrs in network.graph.nodes(data=True):
+                        node_info = {"id": node_id}
+                        # Pass relevant attributes to UI
+                        for k, v in attrs.items():
+                            if isinstance(v, (str, int, float, bool)):
+                                node_info[k] = v
+                            elif isinstance(v, set):
+                                node_info[k] = list(v)
+                        nodes_data.append(node_info)
+                        
+                    links_data = []
+                    for u, v, data in network.graph.edges(data=True):
+                        link = {"source": u, "target": v}
+                        for k, v_attr in data.items():
+                            if isinstance(v_attr, (str, int, float, bool)):
+                                link[k] = v_attr
+                        links_data.append(link)
 
-            if network_config.get("node_definitions"):
-                node_defs = [NodeDefinition(**d) for d in network_config.get("node_definitions", [])]
-                distribution = network_config.get("node_distribution", "sequential")
-                _apply_node_definitions(network, node_defs, distribution=distribution)
+                    await websocket.send_json({
+                        "type": "network_ready",
+                        "total_nodes": network.graph.number_of_nodes(),
+                        "topology": {
+                            "nodes": nodes_data,
+                            "links": links_data
+                        }
+                    })
 
-            malware = Malware(
-                malware_id="malware_1",
-                malware_type=malware_config.get("malware_type", "custom"),
-                infection_rate=malware_config.get("infection_rate", 0.5),
-                latency=malware_config.get("latency", 1),
-                spread_pattern=malware_config.get("spread_pattern", "random"),
-                target_os=malware_config.get("target_os"),
-                target_node_types=malware_config.get("target_node_types"),
-                avoids_admin=malware_config.get("avoids_admin", False),
-                requires_interaction=malware_config.get("requires_interaction", False),
-                bypass_firewall=malware_config.get("bypass_firewall", False),
-                zero_day=malware_config.get("zero_day", False),
-                exploits=malware_config.get("exploits"),
-                cve_only=malware_config.get("cve_only", False)
-            )
+                # --- PHASE 2: START SIMULATION ---
+                if command == "start_simulation" or command == "legacy_run":
+                    from malware_engine.malware_base import Malware
+                    from simulation import Simulator
+                    
+                    if not network:
+                        await websocket.send_json({"type": "error", "message": "Network not built. Send 'build_network' first."})
+                        continue
 
-            simulator = Simulator(network, malware)
-            simulator.initialize(initial_infected)
+                    malware_config = data.get("malware_config", {})
+                    initial_infected = data.get("initial_infected", [])
+                    max_steps = data.get("max_steps", 100)
 
-            await websocket.send_json({
-                "type": "initialized",
-                "total_devices": network.graph.number_of_nodes(),
-                "initial_infected": len(initial_infected),
-            })
+                    malware = Malware(
+                        malware_id="malware_1",
+                        malware_type=malware_config.get("malware_type", "custom"),
+                        infection_rate=malware_config.get("infection_rate", 0.5),
+                        latency=malware_config.get("latency", 1),
+                        spread_pattern=malware_config.get("spread_pattern", "random"),
+                        target_os=malware_config.get("target_os"),
+                        target_node_types=malware_config.get("target_node_types"),
+                        avoids_admin=malware_config.get("avoids_admin", False),
+                        requires_interaction=malware_config.get("requires_interaction", False),
+                        bypass_firewall=malware_config.get("bypass_firewall", False),
+                        zero_day=malware_config.get("zero_day", False),
+                        exploits=malware_config.get("exploits"),
+                        cve_only=malware_config.get("cve_only", False)
+                    )
 
-            for step_num in range(max_steps):
-                step_data = simulator.step()
+                    simulator = Simulator(network, malware)
+                    simulator.initialize(initial_infected)
 
-                await websocket.send_json({
-                    "type": "step",
-                    "step": step_data["step"],
-                    "newly_infected": step_data["newly_infected"],
-                    "total_infected": step_data["total_infected"],
-                    "devices_infected": step_data["devices_infected"],
-                })
+                    await websocket.send_json({
+                        "type": "initialized",
+                        "total_devices": network.graph.number_of_nodes(),
+                        "initial_infected": len(initial_infected),
+                    })
 
-                if (step_data["newly_infected"] == 0 and 
-                    simulator.current_step > malware.latency):
-                    break
+                    for step_num in range(max_steps):
+                        step_data = simulator.step()
 
-            stats = simulator.get_statistics()
-            await websocket.send_json({
-                "type": "complete",
-                "statistics": stats,
-            })
+                        await websocket.send_json({
+                            "type": "step",
+                            "step": step_data["step"],
+                            "newly_infected": step_data["newly_infected"],
+                            "total_infected": step_data["total_infected"],
+                            "devices_infected": step_data["devices_infected"],
+                        })
+
+                        if (step_data["newly_infected"] == 0 and 
+                            simulator.current_step > malware.latency):
+                            break
+
+                    stats = simulator.get_statistics()
+                    await websocket.send_json({
+                        "type": "complete",
+                        "statistics": stats,
+                    })
 
         except WebSocketDisconnect:
             print("Client disconnected")
