@@ -49,9 +49,14 @@ MSpreadEngine is a backend simulation engine for malware propagation over networ
 
 1.  **Initialized:**
     ```json
-    { "type": "initialized", "total_devices": 100, "initial_infected": 1 }
+    { 
+      "type": "initialized", 
+      "total_devices": 100, 
+      "initial_infected": 1,
+      "initial_infected_ids": ["device_0"] 
+    }
     ```
-    *UI Action:* specific "Reset graph", draw nodes, highlight patient zero.
+    *UI Action:* specific "Reset graph", draw nodes. **Crucial:** Immediately apply "Infected" styling (Red) to all nodes listed in `initial_infected_ids`.
 
 2.  **Step Update:**
     ```json
@@ -90,10 +95,25 @@ MSpreadEngine is a backend simulation engine for malware propagation over networ
 
 The frontend should generate a form with the following inputs mapping to the JSON payload.
 
-### Network Settings
+### A. Standard Node Network (Single Topology)
+Used for creating a single, uniform network (e.g., one office or one server cluster).
+
 *   **Topology:** Dropdown [`scale_free`, `small_world`, `random`, `complete`]
-*   **Node Count:** Slider/Input [Range: 10 - 5000] (Backend supports more, but browser canvas might lag).
-*   **Device Presets:** (Optional) Inputs for OS names, Toggle for Firewall/Antivirus.
+*   **Node Count:** Slider/Input [Range: 10 - 5000].
+*   **Device Attributes:**
+    *   **OS / Device Type:** **Hybrid Input (Combobox)**.
+        *   *Presets:* "Windows 11 Enterprise", "Windows Server 2022", "Ubuntu 22.04 LTS", "macOS Sonoma".
+        *   *Custom:* User can type any string (e.g., "Legacy SCADA System").
+    *   **Security:** Toggle for "Firewall Enabled", Toggle for "Admin User".
+    *   **Vulnerabilities (CVEs):** **Tag Input / Multi-select**.
+        *   User can add CVE IDs (e.g., `CVE-2021-44228`).
+        *   This maps to the `default_vulnerabilities` array in the JSON.
+
+### B. Segmented Node Network (Advanced Enterprise)
+Used for creating multiple interconnected subnets (e.g., Corporate LAN + Server Farm + DMZ).
+*   **Mode Switch:** Toggle between "Standard Node Network" and "Segmented Node Network".
+*   **Subnet Builder:** Allow adding multiple groups (subnets), each with their own "Standard Node Network" settings (OS, CVEs, etc.).
+*   **Interconnects:** UI to draw or define links between these subnets (optionally adding Firewalls on the bridges).
 
 ### Malware Settings
 *   **Type:** Dropdown [`worm` (standard), `virus` (high spread), `ransomware` (destructive), `trojan` (stealthy)].
@@ -101,47 +121,12 @@ The frontend should generate a form with the following inputs mapping to the JSO
 *   **Spreading Logic:** Dropdown [`random` (Standard), `bfs` (Aggressive flood), `dfs` (Targeted)].
 *   **Behaviors:** Toggles for "Avoids Admin", "Requires User Interaction".
 
-### Multi-Network (Advanced Segmented Topology)
-To create multiple connected networks, set `network_type` to `"segmented"`.
-
-**JSON Payload Additions:**
-```json
-{
-  "network_config": {
-    "network_type": "segmented",
-    "subnets": [
-      {
-        "num_nodes": 50,
-        "network_type": "scale_free",
-        "device_attributes": { "device_type": "server", "admin_user": true }
-      },
-      {
-        "num_nodes": 100,
-        "network_type": "random",
-        "device_attributes": { "device_type": "workstation" }
-      }
-    ],
-    "interconnects": [
-      {
-        "source_subnet": 0, // Index of first subnet
-        "target_subnet": 1, // Index of second subnet
-        "source_node": 0,   // (Optional) Local node index in source subnet (Default: 0)
-        "target_node": 0,   // (Optional) Local node index in target subnet (Default: 0)
-        "firewall": true    // (Optional) Enable firewall on bridge nodes
-      }
-    ]
-  }
-}
-```
-
-**UI Implementation:**
-*   **Mode Switch:** "Simple" vs "Advanced/Segmented".
-*   **Subnet Builder:** Button "Add Subnet" -> opens mini-form for (Nodes, Type, Attributes).
-*   **Connection Builder:** Interface to link Subnet A to Subnet B. Visual drag-and-drop or simple dropdown selectors ("Connect Subnet 1 to Subnet 2").
+### Segmented Node Network (Advanced)
+If `network_type` is `segmented`, the `subnets` and `interconnects` arrays are required (as defined in previous contexts).
 
 ---
 
-## 3. Visualization Requirements
+## 4. Visualization Requirements
 
 ### Graph Visualization
 *   The backend works with Node IDs formatted as `device_0`, `device_1`, etc.

@@ -39,6 +39,7 @@ class NetworkConfig(BaseModel):
     num_nodes: int = Field(100, description="Number of devices in the network (ignored for segmented topology)", example=100)
     network_type: str = Field("scale_free", description="Type of network topology: scale_free, small_world, random, complete, segmented", example="scale_free")
     device_attributes: Optional[Dict] = Field(None, description="Attributes to apply to ALL nodes uniformly", example={"os": "Windows Server 2019", "firewall_enabled": True})
+    default_vulnerabilities: Optional[List[str]] = Field(None, description="List of CVEs to apply to all nodes in a standard network", example=["CVE-2021-44228"])
     node_definitions: Optional[List[NodeDefinition]] = Field(None, description="Batch definitions for per-group device attributes (creates network segmentation)")
     node_distribution: str = Field("sequential", description="Distribution mode: 'sequential' (clusters devices by type) or 'random' (mixes device types throughout network)", example="random")
     subnets: Optional[List[Dict]] = Field(None, description="Subnet configurations for segmented topology")
@@ -497,10 +498,15 @@ def create_app() -> FastAPI:
                     
                     network_config = data.get("network_config", {})
                     
+                    # Merge default_vulnerabilities into device_attributes for Standard Networks
+                    attributes = network_config.get("device_attributes") or {}
+                    if network_config.get("default_vulnerabilities"):
+                        attributes["vulnerabilities"] = network_config.get("default_vulnerabilities")
+                    
                     network = NetworkGraph(network_type=network_config.get("network_type", "scale_free"))
                     network.generate_topology(
                         network_config.get("num_nodes", 100),
-                        device_attributes=network_config.get("device_attributes", None),
+                        device_attributes=attributes,
                         subnets=network_config.get("subnets", None),
                         interconnects=network_config.get("interconnects", None)
                     )
@@ -576,6 +582,7 @@ def create_app() -> FastAPI:
                         "type": "initialized",
                         "total_devices": network.graph.number_of_nodes(),
                         "initial_infected": len(initial_infected),
+                        "initial_infected_ids": initial_infected
                     })
 
                     for step_num in range(max_steps):

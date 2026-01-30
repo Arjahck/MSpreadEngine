@@ -14,9 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-# Note: Pinning versions to avoid the NumPy 2.0 / SciPy issue
 COPY requirements.txt .
-RUN pip install --no-cache-dir "numpy<2.0.0" "scipy" "networkx" "fastapi" "uvicorn[standard]" "pydantic<2.0.0" "websockets" "tqdm"
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
