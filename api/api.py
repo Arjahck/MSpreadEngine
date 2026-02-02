@@ -5,12 +5,39 @@ Provides REST API endpoints for creating, running, and analyzing
 malware simulations.
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Security, Depends, status
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 import json
 import random
+import os
+
+# Define API Key Security Scheme
+API_KEY_NAME = "X-Access-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    """
+    Verify the API Key if configured.
+    If MSPREAD_API_KEY environment variable is set, the client must provide a matching X-Access-Key header.
+    If not set, access is allowed without key.
+    """
+    expected_api_key = os.getenv("MSPREAD_API_KEY")
+    
+    # If no key is configured on server, allow access
+    if not expected_api_key:
+        return None
+
+    # If key is configured, client must provide it and it must match
+    if api_key == expected_api_key:
+        return api_key
+        
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Could not validate credentials"
+    )
 
 
 class NodeDefinition(BaseModel):
@@ -359,6 +386,7 @@ def _apply_node_definitions(network, node_definitions: List[NodeDefinition], dis
         if definition.vulnerabilities:
             attributes["vulnerabilities"] = set(definition.vulnerabilities)
 
+        dependencies=[Depends(verify_api_key)]
         for _ in range(definition.count):
             device_id = f"device_{node_id}"
             device_attr_pairs.append((device_id, attributes))

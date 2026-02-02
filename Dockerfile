@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Build-time argument for API Key
+ARG ACCESS_KEY
+ENV MSPREAD_API_KEY=$ACCESS_KEY
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
