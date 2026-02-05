@@ -5,7 +5,7 @@ Provides REST API endpoints for creating, running, and analyzing
 malware simulations.
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Security, Depends, status
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Security, Depends, status, Header
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -14,30 +14,17 @@ import json
 import random
 import os
 
-# Define API Key Security Scheme
-API_KEY_NAME = "X-Access-Key"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-async def verify_api_key(api_key: str = Security(api_key_header)):
+async def verify_api_key(x_access_key: str = Header(None)):
     """
     Verify the API Key if configured.
     If MSPREAD_API_KEY environment variable is set, the client must provide a matching X-Access-Key header.
     If not set, access is allowed without key.
     """
-    expected_api_key = os.getenv("MSPREAD_API_KEY")
+    msp_api_key = os.getenv("MSPREAD_API_KEY")
     
-    # If no key is configured on server, allow access
-    if not expected_api_key:
-        return None
-
     # If key is configured, client must provide it and it must match
-    if api_key == expected_api_key:
-        return api_key
-        
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Could not validate credentials"
-    )
+    if msp_api_key and x_access_key != msp_api_key:
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
 
 class NodeDefinition(BaseModel):
@@ -439,7 +426,7 @@ def create_app() -> FastAPI:
         """Health check endpoint."""
         return {"status": "healthy"}
 
-    @app.post("/api/v1/simulate")
+    @app.post("/api/v1/simulate", dependencies=[Depends(verify_api_key)])
     def run_simulation(request: SimulationRequest) -> Dict:
         """
         Run a malware simulation.

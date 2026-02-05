@@ -6,6 +6,9 @@ import json
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -20,6 +23,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Create the application instance for uvicorn
+app = create_app()
 
 
 def main(
