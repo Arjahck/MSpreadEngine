@@ -406,7 +406,7 @@ def create_app() -> FastAPI:
     # Add CORS middleware to allow cross-origin requests
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["https://mspreadwebui.onrender.com", "http://localhost:5173", "http://localhost"],
+        allow_origins=["https://mspreadwebui.onrender.com", "https://mspread.net/" "http://localhost:5173", "http://localhost"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
